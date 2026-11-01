@@ -1,0 +1,16 @@
+# NEVER commit portfolio data. config.json is expected to hold positions,
+# cost basis and cash — keep it out of git. Use config.example.json as template.
+config.json
+config.local.json
+
+# runtime artifacts
+data/
+ledger/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.DS_Store

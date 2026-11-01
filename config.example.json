@@ -1,0 +1,23 @@
+{
+  "_comment": "Template only. Copy to ./config.json (gitignored) and fill with YOUR portfolio. Tickers below are fictional dummies — never commit real positions/cost_basis/cash.",
+
+  "weights": { "quality": 0.30, "growth": 0.20, "value": 0.20, "momentum": 0.30 },
+
+  "cash_targets": { "bull": 0.05, "neutral": 0.08, "bear": 0.10 },
+
+  "max_position_weight": 0.12,
+  "speculative_budget": 0.10,
+
+  "benchmarks": ["SPY", "QQQ", "^VIX"],
+
+  "positions": { "ACME": 100, "GLOBEX": 50 },
+  "cost_basis": { "ACME": 10.00, "GLOBEX": 20.00 },
+  "cash": 10000.0,
+
+  "etf_tickers": ["ZZIDX"],
+  "speculative_tickers": ["GLOBEX"],
+  "watchlist": ["SOYLENT", "CYBERDYNE"],
+  "scan_universe": ["SOYLENT", "CYBERDYNE", "ENTCORP"],
+
+  "manual_overlay": {}
+}
