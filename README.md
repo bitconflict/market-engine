@@ -18,10 +18,12 @@ market-engine/            ← this repo (code only, safe to share/clone)
     engine/                 decision core (read-only at runtime)
     app.py                  Flask dashboard
     static/index.html       dashboard UI
-    scripts/refresh.py      fetch → score → snapshot → digest pipeline
-    scripts/broker_merge.py broker book → config.json merge (deterministic)
-    tests/                  90 pytest tests, all synthetic fixtures
-    config.example.json     template for your instance config
+    scripts/refresh.py        fetch → score → snapshot → digest pipeline
+    scripts/broker_merge.py   broker book → config.json merge (deterministic)
+    scripts/import_broker_csv.py  Robinhood (or any) CSV export → broker book
+    scripts/check_instance.py self-diagnostic: does your instance add up?
+    tests/                    117 pytest tests, all synthetic fixtures
+    config.example.json       template for your instance config
 
 ~/my-book/                ← your instance (MARKET_ENGINE_HOME — your data)
     config.json             positions, cost basis, cash, watchlist, params
@@ -45,8 +47,15 @@ pip install -e .
 
 mkdir ~/my-book && cd ~/my-book
 cp /path/to/market-engine/config.example.json config.json
-$EDITOR config.json          # your positions, cash, watchlist, scan universe
+$EDITOR config.json          # broker_account, cash strategy, scan universe
 
+# Get your book in — pick ONE:
+#  (a) type positions/cash into config.json by hand, or
+#  (b) import a broker CSV export (no API, no credentials — see Broker sync):
+python /path/to/market-engine/scripts/import_broker_csv.py ~/Downloads/activity.csv --cash 8213.44
+python /path/to/market-engine/scripts/broker_merge.py --apply   # CSV → config.json
+
+python /path/to/market-engine/scripts/check_instance.py  # self-diagnostic
 python /path/to/market-engine/scripts/refresh.py    # first run fetches ~all tickers, prints a digest
 python /path/to/market-engine/app.py                # → http://127.0.0.1:8517
 ```
@@ -60,9 +69,37 @@ Environment knobs: `MARKET_ENGINE_HOME` (instance dir), `DASHBOARD_HOST`
 (default `127.0.0.1`; set `0.0.0.0` to serve your LAN — no auth, trusted
 networks only), `DASHBOARD_PORT` (default 8517).
 
-## Broker sync (bring your own book)
+## Getting your book in (CSV — no API, no MCP, no credentials)
 
-`scripts/broker_merge.py` reconciles a broker dump into `config.json`
+`scripts/import_broker_csv.py` turns a broker CSV export into the broker
+book `broker_merge.py` consumes. Nothing leaves your machine; the script
+never talks to any API.
+
+**Robinhood — Account activity report** (web: *Reports → Account activity
+report*, pick a window covering your oldest open buy):
+
+```bash
+cd ~/my-book
+python .../scripts/import_broker_csv.py ~/Downloads/activity_report.csv --cash 8213.44
+python .../scripts/broker_merge.py           # review the drift it found
+python .../scripts/broker_merge.py --apply   # writes config.json (+ .bak)
+```
+
+It replays position events (Buy/Sell incl. fractional, splits, ACAT
+transfers) into current shares and weighted-average cost basis, counts cash
+events (dividends, transfers, fees) and skips them. The activity CSV carries
+no beginning cash balance, hence `--cash` from your account screen. ACAT
+transfers arrive without cost basis — the script warns; fix `cost_basis` in
+config.json if you care about P&L accuracy. `--dry-run` previews.
+
+**Any other broker (or hand-typed):** `--format positions` with
+`symbol,quantity,average_buy_price`. Header names are matched
+case-insensitively with common aliases; dollar formatting (`$`, commas,
+parenthesised negatives) is handled.
+
+## Broker sync (automated, e.g. Robinhood Trading MCP)
+
+`scripts/broker_merge.py` reconciles any broker dump into `config.json`
 deterministically — an agent or script fetches, this file decides what
 changes, and an LLM never hand-edits money data:
 
@@ -72,6 +109,7 @@ changes, and an LLM never hand-edits money data:
     "portfolio": {"cash": 1234.56, "equity_value": 7890.12},
     "positions": [{"symbol": "XYZ", "quantity": 10, "average_buy_price": 45.0}]}
    ```
+   (The CSV importer just writes this file — the two paths converge.)
 2. `python .../scripts/broker_merge.py` — dry-run listing drift (cash,
    share count, cost-basis, NEW/CLOSED positions); `--apply` writes
    `config.json` (with `.bak`), prunes stale tickers from the ETF/spec lists
@@ -80,11 +118,12 @@ changes, and an LLM never hand-edits money data:
    your config (wrong-account protection), incomplete payloads, implausible
    book values.
 
-For **Robinhood** the sanctioned fetch path is the official Trading MCP
-(read-only `get_accounts` / `get_portfolio` / `get_equity_positions`); run it
-from any agent/automation on a schedule and pipe results through the merge.
-`config.json` then stays a mirror of the broker, and trades made at the
-broker flow into the engine within your sync interval.
+For **Robinhood** the sanctioned automated fetch path is the official
+Trading MCP (read-only `get_accounts` / `get_portfolio` /
+`get_equity_positions`); run it from any agent/automation on a schedule and
+pipe results through the merge. `config.json` then stays a live mirror of
+the broker. If you'd rather not connect anything, a weekly CSV re-import
+through the same merge works just as well.
 
 ## Scheduling
 
@@ -142,15 +181,28 @@ a plain function of `(records, config, cash)`.
 
 ```bash
 pip install pytest
-python -m pytest tests/ -q        # ~90 tests, <2s, fully offline & synthetic
+python -m pytest tests/ -q        # 117 tests, ~10s, fully offline & synthetic
 ```
 
-Covers factor math, regime states, every decision band/gate, portfolio
-invariants, ledger dedupe + scoring, cache behavior, the offline pipeline
-(cost-basis overlay, sparkline integrity, state schema), broker-merge guards
-via subprocess, and the Flask API incl. path-traversal defenses. One test
-validates the production `state.json` when an instance home exists and skips
+Beyond unit coverage of factor math, bands/gates, ledger scoring, the merge
+guards and the Flask API, the suite includes **fixture books with golden
+outputs** (`tests/fixtures/`): three pre-made behavioural instances — bull,
+bear, gate-matrix — plus a mixed win/loss ledger, each with expected engine
+outputs frozen in `golden.json`. `tests/test_fixture_books.py` asserts the
+rules engine reproduces those goldens (composite ±0.1, exact actions) *and*
+semantic invariants (gates only downgrade, bear pauses buys, ETFs never
+scored, over-cap ⇒ TRIM). Goldens change only when rules deliberately
+change — the git diff of a regenerated golden **is** the rules changelog.
+The CSV importer is tested end-to-end (activity replay → broker book →
+merge → config) against a synthetic Robinhood-style CSV. One test validates
+the production `state.json` when an instance home exists and skips
 otherwise — a bare clone never touches a real book.
+
+Regenerate goldens after an intentional rules change:
+
+```bash
+python tests/fixtures/_build.py   # rewrite fixture books + goldens
+```
 
 ## Data caveats
 

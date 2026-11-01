@@ -1,0 +1,76 @@
+{
+ "regime": "bull",
+ "actions": {
+  "BIGC": {
+   "action": "ADD",
+   "composite": 81.2,
+   "flags": []
+  },
+  "RISKY": {
+   "action": "ADD",
+   "composite": 84.5,
+   "flags": []
+  },
+  "FASTG": {
+   "action": "ADD",
+   "composite": 86.6,
+   "flags": []
+  },
+  "SLOWD": {
+   "action": "SELL",
+   "composite": 13.9,
+   "flags": [
+    "F-score <= 2 (financial health failing)",
+    "dilution 10% YoY (Cramer: beware the diluters)",
+    "more than 50% below its high (falling knife)",
+    "revenue declining AND cash-burning"
+   ]
+  },
+  "IDXB": {
+   "action": "HOLD",
+   "composite": null,
+   "flags": []
+  },
+  "BURNR": {
+   "action": "SELL",
+   "composite": 34.8,
+   "flags": [
+    "F-score <= 2 (financial health failing)",
+    "dilution 10% YoY (Cramer: beware the diluters)",
+    "revenue declining AND cash-burning"
+   ]
+  },
+  "NEWA": {
+   "action": "BUY",
+   "composite": 88.7,
+   "flags": []
+  },
+  "MIDP": {
+   "action": "PASS",
+   "composite": 60.8,
+   "flags": []
+  },
+  "STEADY": {
+   "action": "WATCH",
+   "composite": 65.7,
+   "flags": []
+  }
+ },
+ "portfolio": {
+  "cash_pct": 0.5023966127053853,
+  "cash_target": 0.05,
+  "speculative_pct": 0.102930214176499,
+  "speculative_budget": 0.1,
+  "invested": 247614.82,
+  "total": 497614.82,
+  "over_cap": [
+   "BIGC"
+  ]
+ },
+ "candidates": [
+  {
+   "ticker": "STEADY",
+   "action": "WATCH"
+  }
+ ]
+}

@@ -1,0 +1,75 @@
+{
+ "regime": "bull",
+ "actions": {
+  "G_CLEAN": {
+   "action": "ADD",
+   "composite": 88.1,
+   "flags": []
+  },
+  "G_DD": {
+   "action": "HOLD",
+   "composite": 61.6,
+   "flags": [
+    "more than 50% below its high (falling knife)"
+   ]
+  },
+  "G_PE": {
+   "action": "HOLD",
+   "composite": 75.9,
+   "flags": [
+    "forward P/E > 150 \u2014 priced on hope"
+   ]
+  },
+  "G_LOS": {
+   "action": "HOLD",
+   "composite": 71.9,
+   "flags": [
+    "no forward earnings (loss-making)"
+   ]
+  },
+  "G_TT": {
+   "action": "TRIM",
+   "composite": 55.6,
+   "flags": [
+    "more than 50% below its high (falling knife)"
+   ]
+  },
+  "G_DIL": {
+   "action": "SELL",
+   "composite": 29.1,
+   "flags": [
+    "F-score <= 2 (financial health failing)",
+    "dilution 10% YoY (Cramer: beware the diluters)"
+   ]
+  },
+  "G_FS": {
+   "action": "SELL",
+   "composite": 22.6,
+   "flags": [
+    "F-score <= 2 (financial health failing)",
+    "dilution 10% YoY (Cramer: beware the diluters)",
+    "revenue declining AND cash-burning"
+   ]
+  },
+  "G_TWO": {
+   "action": "SELL",
+   "composite": 15.3,
+   "flags": [
+    "F-score <= 2 (financial health failing)",
+    "dilution 10% YoY (Cramer: beware the diluters)",
+    "more than 50% below its high (falling knife)",
+    "revenue declining AND cash-burning"
+   ]
+  }
+ },
+ "portfolio": {
+  "cash_pct": 0.6586838863613967,
+  "cash_target": 0.05,
+  "speculative_pct": 0,
+  "speculative_budget": 0.1,
+  "invested": 77726.84000000001,
+  "total": 227726.84000000003,
+  "over_cap": []
+ },
+ "candidates": []
+}

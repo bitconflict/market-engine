@@ -1,0 +1,41 @@
+{
+ "weights": {
+  "quality": 0.3,
+  "growth": 0.2,
+  "value": 0.2,
+  "momentum": 0.3
+ },
+ "cash_targets": {
+  "bull": 0.05,
+  "neutral": 0.08,
+  "bear": 0.1
+ },
+ "max_position_weight": 0.12,
+ "speculative_budget": 0.1,
+ "positions": {
+  "QUALI": 300,
+  "CRUCH": 1200
+ },
+ "cost_basis": {
+  "QUALI": 40.0,
+  "CRUCH": 70.0
+ },
+ "cash": 300000.0,
+ "watchlist": [
+  "NEWB"
+ ],
+ "scan_universe": [
+  "NEWB",
+  "STEADY"
+ ],
+ "etf_tickers": [],
+ "speculative_tickers": [],
+ "benchmarks": [
+  "SPY",
+  "QQQ",
+  "^VIX"
+ ],
+ "manual_overlay": {},
+ "baseline_date": "2024-06-01",
+ "baseline_value": 500000.0
+}

@@ -1,0 +1,67 @@
+{
+ "windows": {
+  "30": {
+   "calls": 4,
+   "wins": 3,
+   "hit_rate": 0.75,
+   "avg_excess_vs_spy": -0.0414,
+   "note": null
+  },
+  "60": {
+   "calls": 4,
+   "wins": 3,
+   "hit_rate": 0.75,
+   "avg_excess_vs_spy": -0.0783,
+   "note": null
+  },
+  "90": {
+   "calls": 4,
+   "wins": 3,
+   "hit_rate": 0.75,
+   "avg_excess_vs_spy": -0.1109,
+   "note": null
+  }
+ },
+ "spot_log": [
+  {
+   "decision_date": "2023-09-09",
+   "horizon": 30,
+   "ticker": "WINB",
+   "action": "BUY",
+   "ticker_ret": 0.0875,
+   "spy_ret": 0.0182,
+   "excess": 0.0693,
+   "win": true
+  },
+  {
+   "decision_date": "2023-09-09",
+   "horizon": 30,
+   "ticker": "LOSEB",
+   "action": "BUY",
+   "ticker_ret": -0.0723,
+   "spy_ret": 0.0182,
+   "excess": -0.0905,
+   "win": false
+  },
+  {
+   "decision_date": "2023-09-09",
+   "horizon": 30,
+   "ticker": "SELLW",
+   "action": "SELL",
+   "ticker_ret": -0.0639,
+   "spy_ret": 0.0182,
+   "excess": -0.0821,
+   "win": true
+  },
+  {
+   "decision_date": "2023-09-09",
+   "horizon": 30,
+   "ticker": "TRIMW",
+   "action": "TRIM",
+   "ticker_ret": -0.044,
+   "spy_ret": 0.0182,
+   "excess": -0.0622,
+   "win": true
+  }
+ ]
+}

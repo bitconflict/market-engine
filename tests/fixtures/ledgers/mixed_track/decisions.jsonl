@@ -1,0 +1,1 @@
+{"date": "2023-09-09", "regime": "bull", "decisions": {"WINB": {"action": "BUY", "composite": 78.0, "px": 60.0}, "LOSEB": {"action": "BUY", "composite": 71.0, "px": 30.0}, "SELLW": {"action": "SELL", "composite": 22.0, "px": 45.0}, "TRIMW": {"action": "TRIM", "composite": 38.0, "px": 25.0}, "HOLDX": {"action": "HOLD", "composite": 55.0, "px": 50.0}}}

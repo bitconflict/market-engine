@@ -1,0 +1,58 @@
+{
+ "weights": {
+  "quality": 0.3,
+  "growth": 0.2,
+  "value": 0.2,
+  "momentum": 0.3
+ },
+ "cash_targets": {
+  "bull": 0.05,
+  "neutral": 0.08,
+  "bear": 0.1
+ },
+ "max_position_weight": 0.12,
+ "speculative_budget": 0.1,
+ "positions": {
+  "FASTG": 500,
+  "SLOWD": 1000,
+  "IDXB": 500,
+  "BIGC": 9000,
+  "RISKY": 3000,
+  "BURNR": 600
+ },
+ "cost_basis": {
+  "FASTG": 20.0,
+  "SLOWD": 80.0,
+  "IDXB": 30.0,
+  "BIGC": 5.0,
+  "RISKY": 5.0,
+  "BURNR": 30.0
+ },
+ "cash": 250000.0,
+ "watchlist": [
+  "NEWA",
+  "MIDP"
+ ],
+ "scan_universe": [
+  "NEWA",
+  "MIDP",
+  "BANGR",
+  "STEADY"
+ ],
+ "etf_tickers": [
+  "IDXB"
+ ],
+ "speculative_tickers": [
+  "RISKY"
+ ],
+ "benchmarks": [
+  "SPY",
+  "QQQ",
+  "^VIX"
+ ],
+ "manual_overlay": {
+  "RISKY": "pre-earn flyer; sized small on purpose"
+ },
+ "baseline_date": "2024-06-01",
+ "baseline_value": 450000.0
+}

@@ -2,6 +2,8 @@
 # cost basis and cash — keep it out of git. Use config.example.json as template.
 config.json
 config.local.json
+# ...but fixture configs inside tests/ ARE test data (synthetic SCR tickers)
+!tests/fixtures/**/config.json
 
 # runtime artifacts
 data/

@@ -1,0 +1,48 @@
+{
+ "weights": {
+  "quality": 0.3,
+  "growth": 0.2,
+  "value": 0.2,
+  "momentum": 0.3
+ },
+ "cash_targets": {
+  "bull": 0.05,
+  "neutral": 0.08,
+  "bear": 0.1
+ },
+ "max_position_weight": 0.12,
+ "speculative_budget": 0.1,
+ "positions": {
+  "G_FS": 200,
+  "G_DIL": 200,
+  "G_PE": 200,
+  "G_DD": 200,
+  "G_TT": 200,
+  "G_LOS": 200,
+  "G_TWO": 200,
+  "G_CLEAN": 200
+ },
+ "cost_basis": {
+  "G_FS": 40.0,
+  "G_DIL": 40.0,
+  "G_PE": 40.0,
+  "G_DD": 40.0,
+  "G_TT": 40.0,
+  "G_LOS": 40.0,
+  "G_TWO": 40.0,
+  "G_CLEAN": 40.0
+ },
+ "cash": 150000.0,
+ "watchlist": [],
+ "scan_universe": [],
+ "etf_tickers": [],
+ "speculative_tickers": [],
+ "benchmarks": [
+  "SPY",
+  "QQQ",
+  "^VIX"
+ ],
+ "manual_overlay": {},
+ "baseline_date": "2024-06-01",
+ "baseline_value": 160000.0
+}
