@@ -72,6 +72,20 @@ the same rules), `etf_tickers` (never scored — rebalance-only anchor),
 - Fundamentals are quarterly and point-in-time blind (restatements/backfills are taken as-is).
 - Universe-relative ranks (RS percentile) depend on what else you feed it — keep the scan universe stable if you rely on ranks.
 
+## Embedding this engine (host apps)
+
+Install it into your environment and keep all runtime state in **your** directory:
+
+```bash
+pip install -e /path/to/market-engine        # editable; single copy on disk
+export MARKET_ENGINE_HOME=/path/to/your/app  # config.json, data/, ledger/ live here
+```
+
+`MARKET_ENGINE_HOME` decides where `config.json` is read from, where the price
+cache goes, and where the ledger writes — the engine package itself stays
+read-only. Or skip the env var entirely and pass everything explicitly:
+`load_config("/any/path.json")` and `portfolio_state(recs, cfg, cash)`.
+
 ## Security
 
 - `config.json`, `data/`, `ledger/` are gitignored on purpose: they hold positions, cost basis, cash and decision history.

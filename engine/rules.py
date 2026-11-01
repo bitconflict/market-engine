@@ -4,14 +4,15 @@ from .factors import metrics, pillar_scores, pct_rank, _valid
 
 
 def load_config(path=None):
-    """Load engine config. Defaults to ./config.json at the repo root (gitignored —
-    it is expected to carry portfolio data). Pass an explicit path to run fully
-    parameterized, e.g. load_config("/path/to/portfolio.json")."""
+    """Load engine config. Default resolution: $MARKET_ENGINE_HOME/config.json,
+    else ./config.json at the repo root (gitignored — it is expected to carry
+    portfolio data). Pass an explicit path to run fully parameterized, e.g.
+    load_config("/path/to/portfolio.json")."""
     import os
-    if path:
-        return json.load(open(path))
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return json.load(open(os.path.join(root, "config.json")))
+    if path is None:
+        root = os.environ.get("MARKET_ENGINE_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, "config.json")
+    return json.load(open(path))
 
 
 TT_LABELS = [
