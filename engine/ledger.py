@@ -1,11 +1,12 @@
 """Decision ledger: append-only snapshots + self-scoring track record."""
 import json, os, time, datetime
+from . import paths
 
-ROOT = os.environ.get("MARKET_ENGINE_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LED = os.path.join(ROOT, "ledger")
+ROOT = paths.home()
+LED = paths.ledger_dir()
+DEC = paths.decisions_path()
+NAV = paths.nav_path()
 os.makedirs(LED, exist_ok=True)
-DEC = os.path.join(LED, "decisions.jsonl")
-NAV = os.path.join(LED, "nav.json")
 
 
 def today():

@@ -7,7 +7,7 @@ name = "market-engine"
 version = "1.0.0"
 description = "Rules-based equity decision engine: regime, factor pillars, gated actions, self-scoring ledger"
 requires-python = ">=3.9"
-dependencies = ["yfinance>=0.2.40"]
+dependencies = ["yfinance>=0.2.40", "flask>=2.2"]
 
 [tool.setuptools]
 packages = ["engine"]

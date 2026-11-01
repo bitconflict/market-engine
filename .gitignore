@@ -14,3 +14,9 @@ __pycache__/
 .venv/
 venv/
 .DS_Store
+
+# dashboard/server artifacts
+server.log
+*.bak
+.pytest_cache/
+*.egg-info/

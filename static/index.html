@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio Strategist</title>
+<style>
+:root{--bg:#0c0e13;--panel:#131722;--panel2:#171c2a;--line:#232a3d;--txt:#dfe4ee;--dim:#8b94a8;--acc:#e8613c;--grn:#2ecc8f;--red:#ff5d5d;--ylw:#f5b94d;--blu:#5da9ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 18px 80px}
+h1{font-size:21px;margin:0}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:28px 0 10px}
+.sub{color:var(--dim);font-size:12.5px}
+header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-width:150px;cursor:pointer}
+.stat:hover{border-color:var(--acc)}
+.stat .k{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.stat .v{font-size:19px;font-weight:650}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600;cursor:pointer}
+.bull{background:#123c2d;color:var(--grn)}.bear{background:#3c1620;color:var(--red)}.neutral{background:#3a3018;color:var(--ylw)}
+.act{padding:3px 11px;border-radius:6px;font-weight:700;font-size:12px;white-space:nowrap}
+.SELL,.AVOID{background:#41181f;color:var(--red)}.TRIM{background:#3d2c14;color:var(--ylw)}
+.HOLD,.WATCH{background:#1c2536;color:var(--blu)}.BUY,.ADD{background:#123c2d;color:var(--grn)}
+.PASS,.WAIT{background:#20242e;color:var(--dim)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid #1a2030;vertical-align:middle}
+tr.hrow{cursor:pointer}
+tr.hrow:hover td{background:var(--panel2)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.tk{font-weight:700}.nm{font-size:11.5px;color:var(--dim);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:6px;border-radius:4px;background:#222941;overflow:hidden;min-width:54px}
+.bar i{display:block;height:100%}
+.pchip{display:inline-block;width:24px;height:24px;border-radius:6px;font-size:10px;line-height:24px;text-align:center;font-weight:700;color:#0b0d12;margin-right:3px}
+.dots{display:flex;gap:3px}.dot{width:7px;height:7px;border-radius:50%;background:#2a3352}.dot.on{background:var(--grn)}
+.comp{font-size:16px;font-weight:750}
+.flags{color:var(--red);font-size:11.5px;max-width:230px}
+.tap{color:var(--blu);font-size:11px;white-space:nowrap}
+.actions{display:flex;flex-direction:column;gap:8px}
+.arow{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer}
+.arow:hover{border-color:var(--acc)}
+.arow .why{color:var(--dim);font-size:12.5px;flex:1}
+.spark{width:104px;height:32px}
+button{background:var(--acc);border:0;color:#fff;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}
+button:disabled{opacity:.5}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+footer{margin-top:34px;color:var(--dim);font-size:11.5px;border-top:1px solid var(--line);padding-top:14px}
+a{color:var(--blu)}
+.alloc{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+@media(max-width:860px){.alloc{grid-template-columns:1fr}}
+.sliderbox input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:4px;background:linear-gradient(to right,var(--acc) 0%,var(--acc) var(--fill,50%),var(--panel2) var(--fill,50%));outline:none;margin:10px 0 4px}
+.sliderbox input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--acc);border:3px solid #0d111c;box-shadow:0 0 0 1px var(--acc);cursor:pointer}
+.sliderbox input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--acc);border:3px solid #0d111c;cursor:pointer}
+.risklab{font-size:15px;font-weight:700}
+.piewrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.donut{width:150px;height:150px;flex:none}
+.donut .dtot{fill:#dfe4ee;font-size:11px;font-weight:700}
+.donut .dsub{fill:#8b94a8;font-size:6.5px}
+.legend{font-size:12.5px;display:flex;flex-direction:column;gap:5px;flex:1;min-width:190px}
+.legend .li{display:grid;grid-template-columns:11px 1fr auto 74px;align-items:center;gap:7px}
+.legend .li b{font-variant-numeric:tabular-nums}
+.legend .li .sub{text-align:right;font-variant-numeric:tabular-nums}
+.legend .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.delta{margin-top:12px;font-size:12.5px;display:flex;flex-direction:column;gap:5px}
+.delta .d{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--panel2);border-radius:8px;padding:6px 10px}
+#ovl{position:fixed;inset:0;background:rgba(4,6,10,.72);display:none;z-index:50;overflow-y:auto;padding:30px 14px}
+#ovl.on{display:block}
+#modal{max-width:680px;margin:0 auto;background:#141927;border:1px solid #2c3550;border-radius:14px;padding:20px 22px}
+#modal h3{margin:0 0 2px;font-size:18px}
+#modal .ms{color:var(--dim);font-size:12.5px;margin-bottom:12px}
+.sec{margin:14px 0}
+.sec .st{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);margin-bottom:6px}
+.step{border-left:3px solid var(--acc);padding:2px 0 2px 12px;margin:8px 0}
+.step .sl{font-weight:700;font-size:12.5px}
+.step .sd{color:var(--dim);font-size:12.8px}
+.flagbox{background:#2a151a;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:12.8px}
+.flipbox{background:#12302b;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:12.8px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
+.mgrid .m{background:var(--panel2);border-radius:8px;padding:6px 10px}
+.mgrid .m .k{font-size:10.5px;color:var(--dim);text-transform:uppercase}
+.mgrid .m .v{font-weight:700}
+.ttl{display:flex;gap:8px;align-items:center;font-size:12.5px;margin:4px 0}
+.ttl .ok{color:var(--grn)}.ttl .no{color:#4a536e}
+.xbtn{float:right;background:var(--panel2);color:var(--txt);border-radius:8px;padding:4px 12px;font-weight:400}
+[data-tip]{cursor:help}
+#tt{position:fixed;z-index:99;display:none;background:#1c2336;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 11px;font-size:12px;line-height:1.45;max-width:272px;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+@media(max-width:900px){.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>🧭 Portfolio Strategist</h1>
+  <div class="sub" id="asof">loading… &nbsp;·&nbsp; tap anything for the reasoning</div></div>
+  <div><button id="refreshBtn" onclick="doRefresh()">↻ Refresh data</button></div>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<h2>⚡ Action center</h2>
+<div class="actions" id="actions"></div>
+
+<h2>🎛️ Allocation planner</h2>
+<div class="card">
+  <div class="sliderbox">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span class="risklab" id="risklab">Balanced (50)</span>
+      <span class="sub">drag to set risk tolerance — targets update live</span>
+    </div>
+    <input type="range" id="risk" min="0" max="100" value="50" oninput="renderAlloc()">
+  </div>
+  <div class="alloc">
+    <div><div class="sub" style="text-transform:uppercase;letter-spacing:.07em;font-size:11px">Current book</div><div class="piewrap" id="pieNow"></div></div>
+    <div><div class="sub" style="text-transform:uppercase;letter-spacing:.07em;font-size:11px">Recommended at this risk</div><div class="piewrap" id="pieTgt"></div></div>
+  </div>
+  <div class="delta" id="delta"></div>
+  <div class="sub" id="allocnote" style="margin-top:10px"></div>
+</div>
+
+<h2>Holdings <span class="sub" style="text-transform:none;letter-spacing:0">— tap a row for the full why</span></h2>
+<div class="card" style="overflow-x:auto"><table id="holdings"></table></div>
+
+<h2>Watchlist ranking</h2>
+<div class="card" style="overflow-x:auto"><table id="watch"></table></div>
+
+<h2>💡 Screener picks <span class="sub" style="text-transform:none;letter-spacing:0">— outside your book, same engine, top of a 42-name quality/momentum universe</span></h2>
+<div class="card" style="overflow-x:auto"><table id="cands"></table>
+<div class="sub" id="candsnote" style="margin-top:8px"></div></div>
+
+<h2>Strategy track record (self-scored vs SPY) <span class="sub" style="text-transform:none;letter-spacing:0">— tap a card</span></h2>
+<div class="grid4" id="track"></div>
+
+<h2>Book value history</h2>
+<div class="card"><svg id="navchart" width="100%" height="90"></svg><div class="sub" id="navsub"></div></div>
+
+<footer>
+  Strategy: quality 30 · momentum 30 · growth 20 · value 20 — Piotroski F-score, Minervini trend template, Magic-Formula-style value discipline, Jegadeesh–Titman momentum, Cramer best-of-breed & trim-on-strength rules. Full rationale in DESIGN.md.<br><br>
+  <b>Not financial advice.</b> Decision-support on delayed Yahoo data; the allocation planner is a textbook risk-band model, not personalized advice. The decision ledger scores every call against SPY so this tool earns trust with evidence — not vibes.
+</footer>
+</div>
+
+<div id="ovl" onclick="if(event.target===this)closeModal()"><div id="modal"></div></div>
+
+<script>
+let STATE=null;
+const fmt$=x=>x==null?'—':'$'+x.toLocaleString(undefined,{maximumFractionDigits:0});
+const pct=x=>x==null?'—':(x*100).toFixed(1)+'%';
+const compColor=c=>c==null?'var(--dim)':c>=65?'var(--grn)':c>=50?'var(--blu)':c>=42?'var(--ylw)':'var(--red)';
+const esc=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const BUCKETS={cash:{l:'Cash',c:'#8b94a8'},core:{l:'Core index ETFs',c:'#5da9ff'},div:{l:'Dividend / defensive',c:'#2ecc8f'},growth:{l:'Quality growth stocks',c:'#e8613c'},spec:{l:'Speculative growth',c:'#ff5d5d'}};
+
+/* ---------- modal ---------- */
+function openModal(html){document.getElementById('modal').innerHTML='<button class="xbtn" onclick="closeModal()">✕ close</button>'+html;document.getElementById('ovl').classList.add('on');document.body.style.overflow='hidden'}
+function closeModal(){document.getElementById('ovl').classList.remove('on');document.body.style.overflow=''}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+const ordinal=n=>{const v=Math.round(n);return v+(v%10==1&&v%100!=11?'st':v%10==2&&v%100!=12?'nd':v%10==3&&v%100!=13?'rd':'th')};
+function metricGrid(h){
+  const M=[['Price',h.px?'$'+h.px.toFixed(2):'—'],h.cost_per_share?['Cost / sh','$'+h.cost_per_share.toFixed(2)]:null,h.unrealized!=null?['Unrl. P&L',(h.unrealized>=0?'+':'')+fmt$(h.unrealized)+' ('+(h.unrealized_pct>=0?'+':'')+h.unrealized_pct+'%)']:null,['6-mo',h.m6!=null?((h.m6*100).toFixed(0)+'%'):'—'],['12-1 mom',h.m121!=null?((h.m121*100).toFixed(0)+'%'):'—'],['From high',h.off_hi!=null?((h.off_hi*100).toFixed(0)+'%'):'—'],['Fwd P/E',h.fwd_pe>0?h.fwd_pe.toFixed(0):(h.fwd_pe<0?'loss':'—')],['Rev growth',h.rev_growth!=null?((h.rev_growth*100).toFixed(0)+'%'):'—'],['F-score',h.f_score!=null?(h.f_score+'/9'):'—'],['RS rank',h.rs_pct!=null?ordinal(h.rs_pct*100):'—'],['Confidence',h.confidence||'—']].filter(Boolean);
+  return `<div class="mgrid">${M.map(m=>`<div class="m"><div class="k">${m[0]}</div><div class="v">${m[1]}</div></div>`).join('')}</div>`;
+}
+function showTicker(t){
+  const h=(STATE.holdings.find(x=>x.ticker===t)||STATE.watchlist.find(x=>x.ticker===t)||(STATE.candidates||[]).find(x=>x.ticker===t));
+  if(!h)return;
+  let s=`<h3>${h.ticker} <span class="act ${h.action}" style="font-size:13px">${h.action}</span>${h.composite!=null?` <span class="comp" style="color:${compColor(h.composite)}">${h.composite.toFixed(0)}</span>`:''}</h3>
+    <div class="ms">${esc(h.name||'')}${h.sector?' · '+esc(h.sector):''}${h.weight?` · ${pct(h.weight)} of book · ${fmt$(h.value)}`:' · '+(h.list==='watch'?'watchlist':'screener pick')}${h.shares?' · '+h.shares+' sh':''}${h.cost_per_share?` · cost $${h.cost_per_share.toFixed(2)}/sh · unrl ${(h.unrealized>=0?'+':'')+fmt$(h.unrealized)} (${(h.unrealized_pct>=0?'+':'')+h.unrealized_pct}%)`:''}</div>`;
+  if(h.pillars){const pc=k=>{const v=h.pillars[k];return v>=65?'#2ecc8f':v>=50?'#5da9ff':v>=42?'#f5b94d':'#ff5d5d'};
+    s+=`<div class="sec"><div class="st">Pillar scores</div>${['quality','growth','value','momentum'].map(k=>`<span class="pchip" style="background:${pc(k)}" title="${k}">${k[0].toUpperCase()} ${Math.round(h.pillars[k])}</span>`).join('')}</div>`;}
+  s+=`<div class="sec"><div class="st">The numbers behind the call</div>${metricGrid(h)}</div>`;
+  if(h.explain&&h.explain.length) s+=`<div class="sec"><div class="st">Decision trace — rule by rule</div>`+
+    h.explain.map(e=>`<div class="step"><div class="sl">${esc(e.step)}</div><div class="sd">${esc(e.detail)}</div></div>`).join('')+`</div>`;
+  if(h.flags&&h.flags.length) s+=`<div class="sec"><div class="st">Red flags — what they mean</div>`+
+    h.flags.map((f,i)=>`<div class="flagbox">🚩 <b>${esc(f)}</b><br><span class="sub">${esc((h.flag_notes||[])[i]||'')}</span></div>`).join('')+`</div>`;
+  if(h.tt8&&h.tt_labels) s+=`<div class="sec"><div class="st">Minervini trend template — ${h.trend_passes}/8</div>`+
+    h.tt8.map((v,i)=>`<div class="ttl"><span class="${v?'ok':'no'}">${v?'✓':'✗'}</span> ${esc(h.tt_labels[i])}</div>`).join('')+`</div>`;
+  if(h.notes&&h.notes.length) s+=`<div class="sec"><div class="st">Position notes</div>`+h.notes.map(n=>`<div class="flipbox" style="background:#31281a">📐 ${esc(n)}</div>`).join('')+`</div>`;
+  if(h.overlay_note) s+=`<div class="sec"><div class="st">Owner note (manual overlay)</div><div class="flipbox" style="background:#31281a">📌 ${esc(h.overlay_note)}</div></div>`;
+  if(h.flip&&h.flip.length) s+=`<div class="sec"><div class="st">What would change this decision</div>`+h.flip.map(f=>`<div class="flipbox">🔁 ${esc(f)}</div>`).join('')+`</div>`;
+  openModal(s);
+}
+function showRegime(){
+  const r=STATE.regime;
+  openModal(`<h3>Market regime <span class="badge ${r.label}">${r.label.toUpperCase()}</span></h3><div class="ms">Sets the cash target and pauses new buys in bear — never changes a stock's score.</div>`+
+    r.explain.map(e=>`<div class="step"><div class="sl">${esc(e.step)}</div><div class="sd">${esc(e.detail)}</div></div>`).join(''));
+}
+function showCard(kind){
+  const p=STATE.portfolio;let t='',b=[];
+  if(kind==='book'){t='Book value';const bl=STATE.baseline||{};b=['Equities '+fmt$(p.invested)+' + cash '+fmt$(p.cash)+' = '+fmt$(p.total)+'. Cost basis is the broker average buy price per position, kept current by the broker sync (scripts/broker_merge.py). Unrealized P&L = current value − cost basis: '+fmt$(p.unrealized_total)+' ('+(p.unrealized_total_pct>=0?'+':'')+p.unrealized_total_pct+'%) on '+fmt$(p.cost_basis_total)+' invested.'+(bl.value?(' The baseline — '+bl.date+', book '+fmt$(bl.value)+' — is set in config.json (baseline_date / baseline_value).'):'')+' Prices are Yahoo-delayed, so intraday numbers can differ from the broker.'];}
+  if(kind==='cash'){t='Cash position';b=[`Cash is ${pct(p.cash_pct)} vs a regime target of ${pct(p.cash_target)}. The minimum cash target follows the cycle: 5% bull / 8% neutral / 10% bear (Marks: prepare, don't predict).`,`You sit far above target — that is dry powder, not a violation. The allocation planner shows what staged deployment into the index core would look like at your chosen risk level.`,`Cash earns sweep yield while it waits; the cost of waiting is participation. Both costs are real — that is what the risk slider is for.`];}
+  if(kind==='spec'){t='Speculative sleeve';b=[`Speculative = ${(STATE.speculative_tickers||[]).join(', ')} — pre-earn, high-beta or turnaround names, classified in config.json.`,`${pct(p.speculative_pct)} vs a ${pct(p.speculative_budget)} budget. Over budget means one blowup costs more than the plan allows; the cure is trimming the weakest names, not panic-selling the strongest.`];}
+  if(kind==='cap'){t='Position concentration';b=[`Cap is 12% of the total book (config: max_position_weight). Concentrated books ride well and crash harder.`,p.over_cap.length?('Over cap: '+p.over_cap.join(', ')):'No position is over the cap right now.'];}
+  openModal(`<h3>${t}</h3><div class="ms">tap-through explanation</div>`+b.map(x=>`<div class="step"><div class="sd">${esc(x)}</div></div>`).join(''));
+}
+function showLedger(days){
+  openModal(`<h3>Ledger ${days}-day window</h3><div class="ms">How the grading works</div>
+   <div class="step"><div class="sd">Every decision is stored at each refresh. Once it is ${days} trading days old, the tool measures the ticker's return over that window vs SPY.</div></div>
+   <div class="step"><div class="sd">BUY/ADD wins if the stock beat SPY. SELL/TRIM/AVOID wins if the stock lagged SPY. The card shows the hit rate and average excess return.</div></div>
+   <div class="step"><div class="sd">First snapshot: 2026-10-18. Windows fill as time passes — no backfilled history, no fake evidence. Trade replication waits on this scoreboard.</div></div>`);
+}
+
+/* ---------- hover tooltips ---------- */
+const TT=document.createElement('div');TT.id='tt';document.body.appendChild(TT);
+function ttShow(t){TT.textContent=t;TT.style.display='block'}
+function ttHide(){TT.style.display='none'}
+function ttPos(e){const r=TT.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+16;
+  if(x+r.width>innerWidth-10)x=e.clientX-r.width-12;
+  if(y+r.height>innerHeight-10)y=e.clientY-r.height-12;
+  TT.style.left=Math.max(6,x)+'px';TT.style.top=Math.max(6,y)+'px'}
+document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(!t)return;ttShow(t.getAttribute('data-tip'));ttPos(e)});
+document.addEventListener('mousemove',e=>{if(TT.style.display==='block')ttPos(e)});
+document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))ttHide()});
+window.addEventListener('scroll',ttHide,true);
+const ACT_TIP={BUY:"Composite ≥70 + trend ≥6/8 + zero red flags — buy zone.",ADD:"Add to an existing holding on the same bar as BUY.",HOLD:"Thesis intact — no action required by the rules.",TRIM:"Flag-capped or trend-weakening — reduce on strength, not panic.",SELL:"Composite <32, or broken trend with multiple issues — exit plan.",AVOID:"Watchlist name scoring at TRIM level — do not initiate.",WATCH:"Watchlist neutral — set your entry trigger instead.",PASS:"Fails core rules — deliberately ignored."};
+const PILLAR_TIP={quality:"Quality — Piotroski F-score, margin trend, earnings quality. Green ≥65.",growth:"Growth — revenue & earnings growth rates (y/y).",value:"Value — earnings yield vs price (Greenblatt-style). Low = priced on hope.",momentum:"Momentum — 6/12-month relative price strength (Jegadeesh–Titman)."};
+const COL_TIP={Ticker:"Company + your shares. Click the row for the full why.",'6-mo':"~6 months of price history (sparkline, 2-week samples). Shape = trend.",'Px / Value':"Latest price (Yahoo, 15–20 min delayed) · position value · colored % = unrealized P&L vs broker cost basis (Robinhood MCP).",'6mo':"6-month total return of the stock itself.",Weight:"Position as % of the TOTAL book (incl. cash). Bar turns yellow above the 12% cap.",Score:"Composite 0–100 = Quality 30% + Momentum 30% + Growth 20% + Value 20%. ≥70 buy zone · <32 sell.",Pillars:"Per-pillar scores — hover each chip for its definition.",Template:"Minervini trend template — 8-point healthy-uptrend checklist. BUY needs ≥6 ✓. Click row for the checklist.",Action:"Engine verdict from the composite + trend/flag gates. Click the row for the rule-by-rule trace.",Flags:"Red flags: F-score ≤2 · declining revenue + cash burn · fwd P/E >150 or negative · >50% below high · share dilution. Flags cap the action.",'why ›':"Full decision trace, numbers and flip conditions."};
+const CARD_TIP=[["Unrealized","Current equity value − broker average buy price, live from the Robinhood Trading MCP. Click for the full breakdown."],["Book","Cash + equities at last prices. Click for baseline & cost-basis breakdown."],["Regime","BULL / NEUTRAL / BEAR from SPY & QQQ vs their 200-day averages + VIX. Sets the cash target and pauses new buys in bear. Click for the trace."],["Cash","Cash share of the book vs the regime target (5/8/10%). Click for the dry-powder logic."],["Speculative","Pre-earn / high-beta / turnaround names vs the 10% budget. Click for the rule."],["Over cap","Any position above 12% of the total book — concentration alarm. Click for the rule."]];
+function annotate(){
+  document.querySelectorAll('table th').forEach(th=>{const t=COL_TIP[th.textContent.trim()];if(t)th.setAttribute('data-tip',t)});
+  document.querySelectorAll('.pchip').forEach(c=>{const k=(c.getAttribute('title')||'').split(' ')[0];if(PILLAR_TIP[k]){c.setAttribute('data-tip',PILLAR_TIP[k]);c.removeAttribute('title')}});
+  document.querySelectorAll('.act').forEach(a=>{const t=ACT_TIP[a.textContent.trim()];if(t)a.setAttribute('data-tip',t+' Click row for reasoning.')});
+  document.querySelectorAll('.dots').forEach(d=>d.setAttribute('data-tip',`Minervini trend template: ${d.getAttribute('title')||''} — click the row for the 8-point checklist.`));
+  document.querySelectorAll('#stats .stat').forEach(s=>{const k=s.querySelector('.k')?s.querySelector('.k').textContent:'';for(const c of CARD_TIP){if(k.startsWith(c[0])){s.setAttribute('data-tip',c[1]);break}}});
+  document.querySelectorAll('#track .card').forEach(c=>{const d=c.querySelector('.k')?.textContent||'';c.setAttribute('data-tip',`Ledger ${d}: engine calls made at least ${d.replace('window','').trim()} ago are graded here — did the stock beat/lose to SPY over that span? Only decisions the engine actually made; the ledger is never backfilled. Click for how grading works.`)});
+  const rl=document.getElementById('risklab');if(rl)rl.setAttribute('data-tip','Risk profile blends a conservative anchor (22% cash/45% index core) with an aggressive one (3/15), tilted by market regime. Textbook model, not personalized advice.');
+  const asof=document.getElementById('asof');if(asof&&!asof.getAttribute('data-tip'))asof.setAttribute('data-tip','All prices Yahoo-delayed 15–20 min; cost basis from the scheduled broker sync. "Refresh data" re-scores now.');
+}
+
+/* ---------- allocation planner ---------- */
+function riskLabel(r){return r<20?'Very conservative':r<40?'Conservative':r<60?'Balanced':r<80?'Growth-oriented':'Aggressive'}
+function allocTargets(risk,regime){
+  const A=[[22,45,15,15,3],[3,15,4,55,23]];   // conservative / aggressive anchors: cash, coreETF, div, growth, spec
+  const t=A[0].map((v,i)=>v+(A[1][i]-v)*risk/100);
+  if(regime==='bear'){t[0]+=5;t[3]-=3;t[4]-=2}
+  else if(regime==='neutral'){t[0]+=2;t[3]-=2}
+  const s=t.reduce((a,b)=>a+b,0);
+  return [0,1,2,3,4].map(i=>t[i]/s*100);
+}
+function currentBuckets(){
+  const p=STATE.portfolio,spec=new Set(STATE.speculative_tickers||[]),etf=new Set(STATE.etf_tickers||[]);
+  const b={cash:p.cash,core:0,div:0,growth:0,spec:0};
+  for(const h of STATE.holdings){
+    if(etf.has(h.ticker)) b.div+=h.value;
+    else if(spec.has(h.ticker)) b.spec+=h.value;
+    else b.growth+=h.value;
+  }
+  return b;
+}
+function donut(data,total){
+  const keys=Object.keys(data).filter(k=>data[k]>0.5);
+  const sum=keys.reduce((a,k)=>a+data[k],0)||1;
+  let acc=0;const R=38,SW=16,CIRC=2*Math.PI*R;let segs='';
+  for(const k of keys){const frac=data[k]/sum,dash=Math.max(frac*CIRC-1.4,0.3);
+    segs+=`<circle r="${R}" cx="50" cy="50" fill="none" stroke="${BUCKETS[k].c}" stroke-width="${SW}" stroke-dasharray="${dash} ${CIRC-dash}" stroke-dashoffset="${-acc}" transform="rotate(-90 50 50)" stroke-linecap="butt"><title>${BUCKETS[k].l}: ${fmt$(data[k])}</title></circle>`;acc+=dash+1.4;}
+  const legend=Object.keys(BUCKETS).map(k=>{const pc=data[k]>0?(data[k]/sum*100):0;return `<div class="li"><span class="sw" style="background:${BUCKETS[k].c}"></span><span class="ln">${BUCKETS[k].l}</span><b>${pc.toFixed(1)}%</b><span class="sub">${fmt$(data[k]||0)}</span></div>`;}).join('');
+  return `<svg class="donut" viewBox="0 0 100 100" aria-hidden="true">${segs}<text x="50" y="48" text-anchor="middle" class="dtot">${fmt$(sum)}</text><text x="50" y="59" text-anchor="middle" class="dsub">${keys.length} buckets</text></svg><div class="legend">${legend}</div>`;
+}
+function renderAlloc(){
+  if(!STATE)return;
+  const risk=+document.getElementById('risk').value;
+  document.getElementById('risk').style.setProperty('--fill',risk+'%');
+  localStorage.setItem('risk',risk);
+  document.getElementById('risklab').textContent=`${riskLabel(risk)} (${risk})`;
+  const cur=currentBuckets();
+  const p=STATE.portfolio.total||1;
+  const tg=allocTargets(risk,STATE.regime.label);
+  const tgt={cash:tg[0]/100*p,core:tg[1]/100*p,div:tg[2]/100*p,growth:tg[3]/100*p,spec:tg[4]/100*p};
+  document.getElementById('pieNow').innerHTML=donut(cur,p);
+  document.getElementById('pieTgt').innerHTML=donut(tgt,p);
+  const rows=Object.keys(BUCKETS).map(k=>({k,d:tgt[k]-cur[k],c:cur[k],t:tgt[k]})).filter(r=>Math.abs(r.d)>500).sort((a,b)=>a.d-b.d);
+  document.getElementById('delta').innerHTML=rows.map(r=>`<div class="d"><span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${BUCKETS[r.k].c};margin-right:6px"></span>${BUCKETS[r.k].l}</span><span>${fmt$(r.c)} → ${fmt$(r.t)}</span><span style="color:${r.d>0?'var(--grn)':'var(--red)'};font-weight:700">${r.d>0?'buy +':'sell −'}${fmt$(Math.abs(r.d))}</span></div>`).join('')||'<div class="d sub">Book already matches this profile within $500 per bucket.</div>';
+  document.getElementById('allocnote').textContent=`Model: linear blend between a conservative anchor (22% cash · 45% index core · 15% dividend · 15% quality growth · 3% speculative) and an aggressive anchor (3 · 15 · 4 · 55 · 23), tilted ${STATE.regime.label==='bear'?'+5 cash (BEAR)':STATE.regime.label==='neutral'?'+2 cash (NEUTRAL)':'nothing (BULL)'}. Cash above target is deployment capacity — stage entries in thirds on dips, never in one print. Textbook risk-band model, not personalized advice.`;
+}
+
+/* ---------- tables & render ---------- */
+function sparkSVG(vals,w=104,h=32){
+  if(!vals||vals.length<2)return'';
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1))*w},${h-2-((v-mn)/rg)*(h-6)}`).join(' ');
+  const up=vals[vals.length-1]>=vals[0];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${up?'#2ecc8f':'#ff5d5d'}" stroke-width="1.6"/></svg>`;
+}
+function pillarChips(p){
+  if(!p)return'';
+  const c=k=>{const v=p[k];return v>=65?'#2ecc8f':v>=50?'#5da9ff':v>=42?'#f5b94d':'#ff5d5d'};
+  return ['quality','growth','value','momentum'].map(k=>`<span class="pchip" style="background:${c(k)}" title="${k} ${p[k]}">${k[0].toUpperCase()}</span>`).join('');
+}
+function dots(tt){if(tt==null)return'';return `<div class="dots" title="trend template ${tt}/8">${Array.from({length:8},(_,i)=>`<span class="dot ${i<tt?'on':''}"></span>`).join('')}</div>`}
+function row(h,isWatch){
+  const chg6=h.m6!=null?`<span style="color:${h.m6>=0?'var(--grn)':'var(--red)'}">${(h.m6*100).toFixed(0)}%</span>`:'—';
+  return `<tr class="hrow" onclick="showTicker('${h.ticker}')">
+  <td><div class="tk">${h.ticker}</div><div class="nm">${h.name||''}</div></td>
+  <td class="hide-sm">${sparkSVG(h.spark)}</td>
+  <td class="num">${h.px?('$'+h.px.toFixed(h.px<10?2:0)):'—'}<div class="sub num">${isWatch?'':fmt$(h.value)+(h.unrealized!=null?` <span style="color:${h.unrealized>=0?'var(--grn)':'var(--red)'}">${(h.unrealized_pct>=0?'+':'')+h.unrealized_pct}%</span>`:'')}</div></td>
+  <td class="num hide-sm">${chg6}</td>
+  ${isWatch?'':`<td class="num" style="min-width:66px"><div>${pct(h.weight)}</div><div class="bar"><i style="width:${Math.min(100,h.weight*100*5)}%;background:${h.weight>.12?'var(--ylw)':'var(--blu)'}"></i></div></td>`}
+  <td class="num"><span class="comp" style="color:${compColor(h.composite)}">${h.composite!=null?h.composite.toFixed(0):'—'}</span></td>
+  <td class="hide-sm">${pillarChips(h.pillars)}</td>
+  <td class="hide-sm">${dots(h.trend_passes)}</td>
+  <td><span class="act ${h.action}">${h.action}</span></td>
+  <td class="flags hide-sm">${(h.flags||[]).join(' · ')}</td>
+  <td class="tap">why ›</td>
+  </tr>`;
+}
+async function render(){
+  const st=await (await fetch('/api/state')).json();
+  if(st.error){document.getElementById('asof').textContent=st.error;return}
+  STATE=st;
+  const p=st.portfolio,ch=(st.baseline&&st.baseline.value)?(p.total-st.baseline.value)/st.baseline.value:0;
+  document.getElementById('asof').innerHTML=`as of ${st.as_of} · tap anything for the reasoning${st.refresh_status&&st.refresh_status.busy?' · <b>refreshing data…</b>':''}`;
+  document.getElementById('stats').innerHTML=`
+   <div class="stat" onclick="showCard('book')"><div class="k">Book <span class="tap">why ›</span></div><div class="v">${fmt$(p.total)}</div><div class="sub" style="color:${ch>=0?'var(--grn)':'var(--red)'}">${st.baseline&&st.baseline.value?((ch*100).toFixed(1)+'% vs '+(st.baseline.date||'baseline')):'no baseline set'}</div></div>
+   ${p.cost_basis_total?`<div class="stat" onclick="showCard('book')"><div class="k">Unrealized P&L <span class="tap">why ›</span></div><div class="v" style="color:${p.unrealized_total>=0?'var(--grn)':'var(--red)'}">${(p.unrealized_total>=0?'+':'')}${fmt$(p.unrealized_total)}</div><div class=\"sub\">${(p.unrealized_total_pct>=0?'+':'')+p.unrealized_total_pct}% vs broker cost basis</div></div>`:''}
+   <div class="stat" onclick="showRegime()"><div class="k">Regime <span class="tap">why ›</span></div><div class="v"><span class="badge ${st.regime.label}">${st.regime.label.toUpperCase()}</span></div><div class="sub">SPY ${(st.regime.spy*100).toFixed(1)}% · QQQ ${(st.regime.qqq*100).toFixed(1)}% vs 200dma · VIX ${st.regime.vix?st.regime.vix.toFixed(0):'—'}</div></div>
+   <div class="stat" onclick="showCard('cash')"><div class="k">Cash <span class="tap">why ›</span></div><div class="v" style="color:${p.cash_pct<p.cash_target?'var(--ylw)':'var(--grn)'}">${pct(p.cash_pct)}</div><div class="sub">target ${pct(p.cash_target)}</div></div>
+   <div class="stat" onclick="showCard('spec')"><div class="k">Speculative sleeve <span class="tap">why ›</span></div><div class="v" style="color:${p.speculative_pct>p.speculative_budget?'var(--red)':'var(--grn)'}">${pct(p.speculative_pct)}</div><div class="sub">budget ${pct(p.speculative_budget)}</div></div>
+   <div class="stat" onclick="showCard('cap')"><div class="k">Over cap (&gt;12%) <span class="tap">why ›</span></div><div class="v" style="color:${p.over_cap.length?'var(--ylw)':'var(--grn)'}">${p.over_cap.length||'none'}</div><div class="sub">${p.over_cap.join(', ')||'max position rule intact'}</div></div>`;
+  document.getElementById('actions').innerHTML=(st.actions.length?st.actions:[]).map(a=>
+    `<div class="arow" onclick="showTicker('${a.ticker}')"><span class="act ${a.action}">${a.action}</span><b>${a.ticker}</b>
+     <span class="why">${(a.reasons||[]).slice(0,2).join(' · ')} ${(a.flags||[]).length?'· 🚩 '+a.flags.join(' · '):''}</span>
+     <span class="comp" style="color:${compColor(a.composite)}">${a.composite!=null?a.composite.toFixed(0):''}</span><span class="tap">why ›</span></div>`).join('')||'<div class="sub">No active buy/sell actions — engine says the book is stable.</div>';
+  const hh=`<tr><th>Ticker</th><th class="hide-sm">6-mo</th><th class="num">Px / Value</th><th class="num hide-sm">6mo</th><th class="num">Weight</th><th class="num">Score</th><th class="hide-sm">Pillars</th><th class="hide-sm">Template</th><th>Action</th><th class="hide-sm">Flags</th><th></th></tr>`;
+  document.getElementById('holdings').innerHTML=hh+st.holdings.map(h=>row(h,false)).join('');
+  document.getElementById('watch').innerHTML=hh.replace('<th class="num">Weight</th>','')+st.watchlist.map(h=>row(h,true)).join('');
+  const cands=st.candidates||[];
+  document.getElementById('cands').innerHTML=hh.replace('<th class="num">Weight</th>','')+cands.map(h=>row(h,true)).join('')||`<tr><td class="sub" style="padding:10px">Nothing in the 42-name universe clears the composite ≥45 bar right now — that's the model saying "stay disciplined," not "go look elsewhere."</td></tr>`;
+  document.getElementById('candsnote').textContent=cands.length?'Shows only names outside your holdings & watchlist that score ≥45 composite (max 12). Universe: 42 mega-cap quality + momentum candidates — deliberately NOT the whole market, so absence from this list means "not evaluated," not "bad." Tap any row for the full why.':'';
+  const W=st.track&&st.track.windows||{};
+  document.getElementById('track').innerHTML=[30,60,90].map(d=>{const w=W[d]||{};return `<div class="card" style="cursor:pointer" onclick="showLedger(${d})"><div class="k sub">${d}-day window</div>
+    <div class="v" style="font-size:22px;font-weight:700">${w.hit_rate!=null?(w.hit_rate*100).toFixed(0)+'%':'—'}</div>
+    <div class="sub">${w.calls?`${w.wins}/${w.calls} calls right · avg excess ${(w.avg_excess_vs_spy*100).toFixed(1)}%`:(w.note||'no data yet')}</div></div>`}).join('');
+  const nav=st.nav_history||[];
+  const svg=document.getElementById('navchart');
+  if(nav.length>1){const ys=nav.map(n=>n.total),mn=Math.min(...ys)*.995,mx=Math.max(...ys)*1.005,rg=(mx-mn)||1;
+    const pts=nav.map((n,i)=>`${(i/(nav.length-1))*1100},${88-((n.total-mn)/rg)*80}`).join(' ');
+    svg.innerHTML=`<polyline points="${pts}" fill="none" stroke="#e8613c" stroke-width="2"/>`;
+    document.getElementById('navsub').textContent=`${nav[0].date} → ${nav[nav.length-1].date} · one point per refresh day — the accountability curve`;}
+  else document.getElementById('navsub').textContent='one snapshot per refresh day — first data point recorded today';
+  document.getElementById('refreshBtn').disabled=st.refresh_status&&st.refresh_status.busy;
+  renderAlloc();
+  annotate();
+}
+async function doRefresh(){
+  await fetch('/api/refresh',{method:'POST'});
+  render();
+  const iv=setInterval(async()=>{const s=await (await fetch('/api/state')).json();
+    if(!(s.refresh_status&&s.refresh_status.busy)){clearInterval(iv);render()}},5000);
+}
+const savedRisk=localStorage.getItem('risk');
+if(savedRisk!=null)document.getElementById('risk').value=savedRisk;
+render();
+</script>
+</body>
+</html>

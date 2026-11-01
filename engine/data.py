@@ -2,11 +2,11 @@
 import json, os, time, math, warnings
 warnings.filterwarnings("ignore")
 
-# Where this engine's writable state lives (price cache, ledger, config).
-# Default: the repo root. Hosts (e.g. an app embedding this engine) point
-# MARKET_ENGINE_HOME at their own directory to keep all runtime state external.
-ROOT = os.environ.get("MARKET_ENGINE_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CACHE = os.path.join(ROOT, "data", "cache")
+# Writable state lives in the host instance dir — see engine/paths.py.
+# (MARKET_ENGINE_HOME env, else cwd. Hosts set it before importing engine.)
+from . import paths
+ROOT = paths.home()
+CACHE = paths.cache_dir()
 os.makedirs(CACHE, exist_ok=True)
 CACHE_TTL = 6 * 3600  # seconds
 

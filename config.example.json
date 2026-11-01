@@ -14,6 +14,10 @@
   "cost_basis": { "ACME": 10.00, "GLOBEX": 20.00 },
   "cash": 10000.0,
 
+  "broker_account": "YOUR-ACCOUNT-ID",
+  "baseline_date": "2026-01-01",
+  "baseline_value": 25000.0,
+
   "etf_tickers": ["ZZIDX"],
   "speculative_tickers": ["GLOBEX"],
   "watchlist": ["SOYLENT", "CYBERDYNE"],

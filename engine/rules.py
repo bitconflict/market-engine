@@ -5,13 +5,12 @@ from .factors import metrics, pillar_scores, pct_rank, _valid
 
 def load_config(path=None):
     """Load engine config. Default resolution: $MARKET_ENGINE_HOME/config.json,
-    else ./config.json at the repo root (gitignored — it is expected to carry
-    portfolio data). Pass an explicit path to run fully parameterized, e.g.
+    else ./config.json (host instance dir — it carries portfolio data, keep
+    it out of git). Pass an explicit path to run fully parameterized, e.g.
     load_config("/path/to/portfolio.json")."""
-    import os
+    from . import paths
     if path is None:
-        root = os.environ.get("MARKET_ENGINE_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        path = os.path.join(root, "config.json")
+        path = paths.config_path()
     return json.load(open(path))
 
 
