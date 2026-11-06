@@ -95,13 +95,19 @@ a{color:var(--blu)}
 <header>
   <div><h1>🧭 Portfolio Strategist</h1>
   <div class="sub" id="asof">loading… &nbsp;·&nbsp; tap anything for the reasoning</div></div>
-  <div><button id="refreshBtn" onclick="doRefresh()">↻ Refresh data</button></div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <select id="profSel" onchange="location.href=this.value?('/?profile='+encodeURIComponent(this.value)):'/'" style="background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 10px" title="portfolio profile"></select>
+  <button id="refreshBtn" onclick="doRefresh()">↻ Refresh data</button>
+  </div>
 </header>
 
 <div class="stats" id="stats"></div>
 
 <h2>⚡ Action center</h2>
 <div class="actions" id="actions"></div>
+
+<h2>🧪 Strategy digest</h2>
+<div class="card"><pre id="digest" style="white-space:pre-wrap;font:12px/1.55 ui-monospace,Menlo,monospace;margin:0">loading…</pre></div>
 
 <h2>🎛️ Allocation planner</h2>
 <div class="card">
@@ -146,6 +152,8 @@ a{color:var(--blu)}
 
 <script>
 let STATE=null;
+const PROF=new URLSearchParams(location.search).get('profile')||'';
+const QS=PROF?('?profile='+encodeURIComponent(PROF)):'';
 const fmt$=x=>x==null?'—':'$'+x.toLocaleString(undefined,{maximumFractionDigits:0});
 const pct=x=>x==null?'—':(x*100).toFixed(1)+'%';
 const compColor=c=>c==null?'var(--dim)':c>=65?'var(--grn)':c>=50?'var(--blu)':c>=42?'var(--ylw)':'var(--red)';
@@ -305,7 +313,7 @@ function row(h,isWatch){
   </tr>`;
 }
 async function render(){
-  const st=await (await fetch('/api/state')).json();
+  const st=await (await fetch('/api/state'+QS)).json();
   if(st.error){document.getElementById('asof').textContent=st.error;return}
   STATE=st;
   const p=st.portfolio,ch=(st.baseline&&st.baseline.value)?(p.total-st.baseline.value)/st.baseline.value:0;
@@ -343,14 +351,52 @@ async function render(){
   annotate();
 }
 async function doRefresh(){
-  await fetch('/api/refresh',{method:'POST'});
+  await fetch('/api/refresh'+QS,{method:'POST'});
   render();
-  const iv=setInterval(async()=>{const s=await (await fetch('/api/state')).json();
+  const iv=setInterval(async()=>{const s=await (await fetch('/api/state'+QS)).json();
     if(!(s.refresh_status&&s.refresh_status.busy)){clearInterval(iv);render()}},5000);
+}
+async function loadDigest(){
+  try{const d=await (await fetch('/api/digest'+QS)).json();
+  const el=document.getElementById('digest');if(el)el.textContent=d.digest||d.error||'—'}catch(e){}
+}
+async function loadProfiles(){
+  try{const pr=await (await fetch('/api/profiles')).json();
+  const sel=document.getElementById('profSel');if(!sel)return;
+  const names=['default'].concat((pr.profiles||[]).map(p=>p.name));
+  sel.innerHTML=names.map(n=>`<option value="${n==='default'?'':n}" ${((PROF||'')===n)?'selected':''}>${n}</option>`).join('');
+  if(names.length>1)sel.style.display='';else sel.style.display='none';}catch(e){}
+}
+async function maybeUploadUI(){
+  let m;try{m=await (await fetch('/api/meta')).json()}catch(e){return}
+  if(!m.uploads_enabled)return;
+  const d=document.createElement('div');
+  d.innerHTML=`<h2>➕ New portfolio profile</h2><div class="card" style="max-width:640px">
+  <div class="sub">Upload a broker export — Robinhood <b>Account Activity CSV</b> (Reports → Account activity), a positions CSV (<code>symbol,quantity,average_buy_price</code>), or a config.json — plus your cash figure. Creates an isolated profile with its own dashboard, digest and ledger; your default book is untouched.</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+  <input id="upName" placeholder="profile name (lowercase)" style="flex:2;min-width:140px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px">
+  <input id="upCash" placeholder="cash, e.g. 8213.44" style="flex:2;min-width:130px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px">
+  <input id="upFile" type="file" style="flex:3;min-width:190px;color:var(--dim)">
+  <button id="upBtn" onclick="doUpload()">Create profile</button></div>
+  <div class="sub" id="upMsg" style="margin-top:8px"></div></div>`;
+  document.querySelector('footer').before(d);
+}
+async function doUpload(){
+  const name=document.getElementById('upName').value.trim(),cash=document.getElementById('upCash').value.trim(),f=document.getElementById('upFile').files[0];
+  const msg=document.getElementById('upMsg'),btn=document.getElementById('upBtn');
+  if(!name||!f){msg.textContent='need a profile name and a file';return}
+  const fd=new FormData();fd.append('profile',name);if(cash)fd.append('cash',cash);fd.append('file',f);
+  msg.textContent='uploading…';btn.disabled=true;
+  const r=await (await fetch('/api/upload',{method:'POST',body:fd})).json();btn.disabled=false;
+  msg.textContent=r.ok?('created "'+r.profile+'" — warming up, dashboard in ~2-4 min').concat(r.notes&&r.notes.length?' · notes: '+r.notes.join(' | '):''):('rejected: '+(r.error||'unknown error'));
+  if(r.ok){loadProfiles();setTimeout(loadProfiles,15000)}
 }
 const savedRisk=localStorage.getItem('risk');
 if(savedRisk!=null)document.getElementById('risk').value=savedRisk;
 render();
+loadDigest();
+loadProfiles();
+maybeUploadUI();
 </script>
 </body>
 </html>

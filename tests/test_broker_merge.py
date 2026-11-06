@@ -43,9 +43,14 @@ def proj(tmp_path):
 
 
 def run(root, *args):
+    # PYTHONPATH=repo root mirrors an installed engine package for the copied
+    # script (it sits in a throwaway dir, exactly like a bare-clone user would
+    # run it with the package on their path).
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return subprocess.run([sys.executable, str(root / "scripts" / "broker_merge.py"), *args],
                           capture_output=True, text=True, cwd=str(root),
-                          env=dict(os.environ, MARKET_ENGINE_HOME=str(root)))
+                          env=dict(os.environ, MARKET_ENGINE_HOME=str(root),
+                                   PYTHONPATH=repo_root))
 
 
 def test_wrong_account_refused(proj):
