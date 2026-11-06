@@ -56,7 +56,8 @@ bound to a network address.
 ## 3. File map
 
 ```
-market-engine/                      ← plane A: the repo (install with pip install -e)
+market-engine/                      ← plane A: the repo (no install step:
+                                      pip install flask yfinance, run from the clone)
 ├── engine/                         decision core, read-only at runtime
 │   ├── paths.py                    THE contract: home() = $MARKET_ENGINE_HOME | cwd;
 │   │                               config/cache/state/ledger paths all derive here
@@ -71,8 +72,15 @@ market-engine/                      ← plane A: the repo (install with pip inst
 │   └── ledger.py                   daily decision snapshots + NAV; grades past calls
 │                                   vs SPY at 30/60/90d; one entry per calendar day
 ├── app.py                          Flask dashboard; serves $MARKET_ENGINE_HOME/data/
-│                                   state.json; POST /api/refresh → subprocess (rule 6);
-│                                   env: DASHBOARD_HOST (127.0.0.1 default), DASHBOARD_PORT
+│                                   state.json; GET /api/state|digest|meta,
+│                                   POST /api/refresh → subprocess (rule 6),
+│                                   POST /api/upload (gated: loopback-on,
+│                                   network-off); env: DASHBOARD_HOST (127.0.0.1
+│                                   default), DASHBOARD_PORT
+├── server_core.py                  single-instance plumbing: upload parsing
+│                                   (config / RH activity / positions CSV →
+│                                   config.json), fail-closed guards, refresh
+│                                   subprocess launch — no per-request homes
 ├── static/index.html               the whole UI (single file, no build step): tables,
 │                                   sparklines, donut allocator, modals/tooltips driven
 │                                   by engine explain fields; renders numbers only from
@@ -80,12 +88,17 @@ market-engine/                      ← plane A: the repo (install with pip inst
 ├── scripts/refresh.py              the pipeline: fetch → score → cost overlay →
 │                                   ledger snapshot → sparklines → data/state.json →
 │                                   Telegram digest to stdout
+├── scripts/import_broker_csv.py    broker CSV export → broker_raw.json (Robinhood
+│                                   activity replay: buys/sells/splits/ACAT, or the
+│                                   generic symbol,quantity,average_buy_price schema)
+├── scripts/check_instance.py       self-diagnostic: does this instance add up?
 ├── scripts/broker_merge.py         broker_raw.json → config.json, deterministic.
 │                                   Guards: broker_account match, completeness,
 │                                   plausible book value. --apply writes .bak first.
-├── tests/                          90 pytest tests, offline + synthetic; includes
-│                                   subprocess broker-merge cases and Flask API
-│                                   traversal defenses; prod-state test self-skips
+├── tests/                          137 pytest tests, offline + synthetic; subprocess
+│                                   broker-merge cases, Flask API traversal defenses,
+│                                   upload/gating tests; fixture books with golden
+│                                   outputs (see §7); prod-state test self-skips
 │                                   without an instance
 ├── config.example.json             template: strategy params + portfolio shape
 ├── pyproject.toml                  installable package (engine), deps: yfinance, flask
@@ -140,7 +153,13 @@ flowchart LR
     CORE --> LED
     RH --> RAW --> MERGE -->|drift + .bak| CFG
     UI -->|POST /api/refresh<br/>subprocess| PIPE
+    UI -.->|POST /api/upload<br/>first-run builds the book| CFG
 ```
+
+Upload (gated to loopback by default) is how a new user's book enters plane
+B: parsed locally into config.json, then the refresh pipeline runs
+immediately — no host automation required to get from "cloned the repo" to a
+personalized dashboard.
 
 Two loops keep the system honest: the **sync loop** (broker → raw → merge →
 config) keeps the book equal to reality, and the **scoring loop** (config →
@@ -166,13 +185,15 @@ ledger observes both and grades the engine later.
 | **Merge guard** | `config.broker_account` | raw payload must match the configured account or the merge aborts — cross-account contamination is impossible by construction |
 | **Digest** | stdout of `refresh.py` | cron-consumable; non-zero exit or empty output surfaces as a failure notice |
 | **Dashboard env** | `DASHBOARD_HOST/PORT`, `MARKET_ENGINE_HOME` | safe default (localhost); LAN is an explicit opt-in; no auth → trusted networks only |
+| **Upload/onboarding** | `app.py /api/upload` + `server_core.py` | accepts config.json, Robinhood activity CSV, generic positions CSV (+cash field); writes only `$ME_HOME/config.json` (+`.bak`), then triggers the refresh subprocess; disabled whenever the server is bound to a non-loopback address unless `ME_ALLOW_UPLOADS=1` |
 
 ## 7. Testing strategy
 
 - **Synthetic-first:** every fixture is fabricated (deterministic price walks, dummy fundamentals); the suite never needs network nor a real book, so it is safe to run anywhere and share publicly.
+- **Golden fixture books:** `tests/fixtures/` holds three behavioural instances (bull, bear, gate-matrix) plus a mixed win/loss ledger with expected outputs frozen in `golden.json`; `test_fixture_books.py` pins them (composite ±0.1, exact actions) and also checks semantic invariants — regenerated goldens are the rules changelog.
 - **Isolation by redirect:** writable engine paths (cache, ledger, state) are monkeypatched to tmp dirs; one test proves state.json and ledger writes go to *different* homes when asked to.
-- **Subprocess where reality is subprocess:** broker-merge cases (wrong account, incomplete, dry-run, apply+bak, fractional shares) run the real script the real way.
-- **Adversarial HTTP:** path-traversal attempts must not reach config.json.
+- **Subprocess where reality is subprocess:** broker-merge cases (wrong account, incomplete, dry-run, apply+bak, fractional shares) run the real script the real way, with the repo root on the subprocess `PYTHONPATH` — no reliance on an editable engine install.
+- **Adversarial HTTP:** path-traversal attempts must not reach config.json; `test_server_setup.py` additionally proves the upload gate (loopback-on / network-off) and end-to-end CSV → config → dashboard personalization on a throwaway home.
 - **Production invariant spot-check:** when run against a real instance, one test re-derives the whole state's arithmetic (values, weights, ordering, candidate disjointness) from its own numbers; self-skips in a bare clone.
 
 ## 8. Security & privacy stance
