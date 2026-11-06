@@ -46,12 +46,12 @@ replaceable (any scheduler + any broker feed works — plane B's
 `$MARKET_ENGINE_HOME`, else the current directory. Run from your instance
 dir and everything lands there; the repo checkout stays pristine.
 
-**Profile rule (server mode):** uploaded books live at
-`$MARKET_ENGINE_HOME/profiles/<name>/` and carry the identical flat layout.
-Refreshing a profile is refreshing with `MARKET_ENGINE_HOME` pointed at that
-profile dir — the engine never learns profiles exist. Only `app.py` +
-`server_core.py` resolve them, and never from raw paths: profile names are
-slug-validated and confined to the profiles dir.
+**Single-tenant rule (server):** one server process = one instance dir = one
+portfolio. No per-request instance selection, no profile dirs — different
+people's data never shares a process, cache, or ledger because each person
+runs their own copy. The upload endpoint builds or rebuilds that one book
+(config.json, `.bak` kept on rebuild) and auto-disables when the server is
+bound to a network address.
 
 ## 3. File map
 
@@ -181,7 +181,7 @@ ledger observes both and grades the engine later.
 - Pre-push ritual: leak-scan tracked content for held tickers, account patterns, dollar magnitudes; UI copy stays user-generic (no hardcoded personal numbers — they render from config at runtime).
 - No credentials in either plane: broker access belongs to the host (plane C); repo code reads only files you place in the instance.
 - Server binds 127.0.0.1 unless told otherwise; no auth exists — never expose beyond a trusted network.
-- Uploads are opt-in (`ME_ALLOW_UPLOADS=1`), size-capped (1 MB), format-checked, and fail-closed — a refused upload writes nothing. Profile names are slug-validated; uploaded state lives in a per-profile dir and never shares cache/ledger with the default book.
+- Uploads are on only while bound to loopback (auto-off on any network bind; `ME_ALLOW_UPLOADS=0` forces off, `=1` forces on), size-capped (1 MB), format-checked, and fail-closed — a refused upload writes nothing; a rebuild keeps config.json.bak. Single-tenant by design: there is no per-request instance-selection surface to attack.
 
 ## 9. Evolution log (why it looks like this)
 
@@ -190,7 +190,8 @@ ledger observes both and grades the engine later.
 | Monolith (app + engine + data in one dir) | worked for one user; unshareable |
 | Engine extracted to repo, app still local | first privacy boundary; drift risk between two engine copies |
 | **Full split (current)** | repo = product, instance = data; the same code now serves any user; host plumbing rewritten to pin `MARKET_ENGINE_HOME` |
-| **Multi-profile server (2.0, current)** | one server hosts your book plus uploaded books as isolated profiles; `server_core.py` owns upload/refresh plumbing, refresh stays a per-profile subprocess; tests no longer depend on an editable engine install (explicit PYTHONPATH in subprocess tests) |
+| Multi-profile server (2.0, tried Nov 5) | shared-host shape worked in tests, but doing it honestly needs auth, quotas and per-tenant sandboxing this project refuses to half-ass — replaced the same day |
+| **Single-tenant server (2.1, current)** | clone-and-run: one server = one machine = one book; first-run upload page personalizes the instance; upload endpoint auto-disables on a network bind; tests no longer depend on an editable engine install (explicit PYTHONPATH in subprocess tests) |
 | Pending: pip packaging | ship server modules as an importable package + `market-engine` console script; today clone-and-run is the supported path |
 
 Each prior incident is a principle above: stale in-process modules → rule 6;

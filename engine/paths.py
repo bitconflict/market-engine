@@ -53,20 +53,3 @@ def decisions_path():
 def nav_path():
     return os.path.join(ledger_dir(), "nav.json")
 
-
-# ---------- profiles (server multi-tenant layer) ----------
-#
-# The flat layout above IS the default profile. Uploaded portfolios live in
-# sibling directories with the identical layout:
-#
-#     <home>/profiles/<name>/config.json · data/ · ledger/
-#
-# A refresh for any profile runs with MARKET_ENGINE_HOME pointed at that
-# profile dir — engine internals never learn about profiles; only the server
-# resolves them. "default" is a reserved name meaning the home root itself.
-
-def profile_home(profile=None):
-    """Absolute dir for a profile name; empty/'default' -> home root."""
-    if not profile or profile == "default":
-        return home()
-    return os.path.join(home(), "profiles", profile)

@@ -32,7 +32,6 @@ market-engine/            ← this repo (code only, safe to share/clone)
     data/state.json         dashboard snapshot (written by refresh)
     data/broker_raw.json    optional raw broker book (see Broker sync)
     ledger/                 decisions.jsonl + nav.json — the track record
-    profiles/<name>/        (server mode) uploaded books, same flat layout
 ```
 
 The instance home is `$MARKET_ENGINE_HOME`, else the current directory. Run
@@ -52,8 +51,10 @@ cp /path/to/market-engine/config.example.json config.json
 $EDITOR config.json          # broker_account, cash strategy, scan universe
 
 # Get your book in — pick ONE:
-#  (a) type positions/cash into config.json by hand, or
-#  (b) import a broker CSV export (no API, no credentials — see Broker sync):
+#  (a) start the server below and upload your CSV on the first-run page
+#      (no API, no credentials — this is the intended path), or
+#  (b) type positions/cash into config.json by hand, or
+#  (c) the same CSV path from the CLI (see Broker sync):
 python /path/to/market-engine/scripts/import_broker_csv.py ~/Downloads/activity.csv --cash 8213.44
 python /path/to/market-engine/scripts/broker_merge.py --apply   # CSV → config.json
 
@@ -69,25 +70,31 @@ caching stale decision code is a real bug this project has bled over).
 
 Environment knobs: `MARKET_ENGINE_HOME` (instance dir), `DASHBOARD_HOST`
 (default `127.0.0.1`; set `0.0.0.0` to serve your LAN — no auth, trusted
-networks only), `DASHBOARD_PORT` (default 8517). `ME_ALLOW_UPLOADS=1` turns on
-the upload endpoint (see Server mode).
+networks only), `DASHBOARD_PORT` (default 8517). See Run-it-locally below for
+the upload endpoint and its network gate.
 
-## Server mode (optional: others' portfolios on one server)
+## Run it on your own machine (single-tenant)
 
-Run `python app.py serve --home ~/my-book --host 0.0.0.0` and the dashboard
-header gets a profile switcher. Any portfolio in `profiles/<name>/` — placed
-by hand or created through `POST /api/upload` (OFF unless
-`ME_ALLOW_UPLOADS=1`) — is served fully personalized: holdings, cost-basis
-P&L, strategy digest, screener candidates, its own ledger and cache.
-`?profile=<name>` selects; `GET /api/profiles` lists. Each profile's refresh
-runs as an isolated subprocess (max 2 concurrent); the instance-root default
-profile keeps the plain single-tenant behavior.
+One clone, one machine, one portfolio — the server is deliberately not a
+multi-tenant host. Point it at any instance dir, open it in a browser:
 
-Uploads accept a `config.json`, a Robinhood *Account activity* CSV, or a
+```bash
+python app.py --home ~/my-book          # default 127.0.0.1:8517
+```
+
+With no book yet, the dashboard opens as an **upload page**: drop in a
+`config.json`, a Robinhood *Account activity* CSV, or a
 `symbol,quantity,average_buy_price` positions CSV (plus your `cash` figure,
-which no CSV carries). Fail-closed: empty or unrecognized books, oversized
-files, name collisions and path tricks are refused without writing anything.
-The server has no auth — enable uploads only on a trusted network.
+which no export carries). The server parses it into your `config.json` and
+runs the first analysis immediately — the dashboard personalizes itself to
+your holdings, cost basis and cash within a few minutes. Fail-closed: empty
+or unrecognized books, oversized files and path tricks are refused without
+writing anything; a rebuild keeps `config.json.bak`.
+
+Uploads are enabled while the server is bound to loopback (the default).
+Bind `--host 0.0.0.0` and they switch **off** automatically — this server has
+no auth. Re-enable deliberately with `--allow-uploads` or `ME_ALLOW_UPLOADS=1`
+only on a network you trust; `ME_ALLOW_UPLOADS=0` always disables.
 
 ## Getting your book in (CSV — no API, no MCP, no credentials)
 

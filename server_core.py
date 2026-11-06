@@ -1,48 +1,31 @@
-"""Server-side plumbing: profile resolution, uploads, refresh pool, digest.
+"""Server plumbing for the single-instance dashboard: portfolio upload + helpers.
 
-Pure file IO + subprocess plumbing — no decision logic here (that lives in
-the engine and scripts/refresh.py). Kept out of app.py so both stay readable
-and unit-testable without Flask.
+Pure file IO — no decision logic here (that lives in engine/ and
+scripts/refresh.py). Kept out of app.py so both stay readable and
+unit-testable without Flask.
 
-Layout: the $MARKET_ENGINE_HOME root is the DEFAULT profile (flat, original
-1.0 layout). Uploaded portfolios become <home>/profiles/<name>/ with the same
-flat layout. Refresh for a profile runs scripts/refresh.py as a subprocess
-with MARKET_ENGINE_HOME=<profile dir>, so the engine sees an ordinary single
-instance; nothing in engine/ learned about profiles.
+One server = one portfolio instance = $MARKET_ENGINE_HOME (or the cwd at
+startup). The product shape is clone-and-run-locally: everyone hosts their own
+copy, and the first-run upload builds their config.json at the instance root.
+There is no multi-tenant mode: no profile dirs, no per-request instance
+selection, nothing that lets one request touch another person's data —
+because a personal machine has only one person.
 
-Uploads are OFF unless ME_ALLOW_UPLOADS=1 (the server has no auth — trusted
-LAN only). Every upload guard is fail-closed: empty books, absurd sizes, and
-bad names are refused without writing anything.
+Upload policy (app.py::uploads_enabled): ON while bound to loopback, OFF when
+bound to a network address unless ME_ALLOW_UPLOADS=1 — this server has no
+auth. Every upload guard is fail-closed: a refused upload writes nothing,
+and a rebuild (replace=1) keeps the old book as config.json.bak.
 """
 import datetime as _dt
 import importlib.util
 import json
 import os
-import re
-import subprocess
-import sys
+import shutil
 import tempfile
-import threading
-import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
-_RESERVED = {"data", "ledger", "profiles", "static", "venv", "tests"}
 MAX_UPLOAD = 1_000_000  # bytes
-
-# Generic, public mega-cap/ETF universe so a fresh upload gets a working
-# screener on first refresh. Public market trivia only — users are expected
-# to edit scan_universe in their own config.json.
-STARTER_UNIVERSE = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "JPM", "JNJ", "V", "PG", "UNH",
-    "MA", "HD", "MRK", "XOM", "CVX", "COST", "ABBV", "LLY", "CSCO", "PEP",
-    "KO", "AVGO", "TMO", "CRM", "AMD", "ORCL", "ACN", "QCOM", "TXN", "IBM",
-    "CAT", "UNP", "NOW", "UBER", "NFLX", "DIS", "SPGI", "VRTX", "GE",
-    "SCHD", "SCHG", "TLT",
-]
-STARTER_SPEC = {"UBER", "NFLX", "NOW"}
-STARTER_ETF = {"SCHD", "SCHG", "TLT"}
 
 
 def load_script(name):
@@ -58,95 +41,21 @@ def load_script(name):
     return mod
 
 
-def valid_name(name):
-    return bool(NAME_RE.match(name or "")) and name not in _RESERVED
+# Generic, public mega-cap/ETF universe so a fresh upload gets a working
+# screener on first refresh. Public market trivia only — replace it with the
+# names you actually follow by editing scan_universe in your config.json.
+STARTER_UNIVERSE = [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "JPM", "JNJ", "V", "PG", "UNH",
+    "MA", "HD", "MRK", "XOM", "CVX", "COST", "ABBV", "LLY", "CSCO", "PEP",
+    "KO", "AVGO", "TMO", "CRM", "AMD", "ORCL", "ACN", "QCOM", "TXN", "IBM",
+    "CAT", "UNP", "NOW", "UBER", "NFLX", "DIS", "SPGI", "VRTX", "GE",
+    "SCHD", "SCHG", "TLT",
+]
+STARTER_SPEC = {"UBER", "NFLX", "NOW"}
+STARTER_ETF = {"SCHD", "SCHG", "TLT"}
 
 
-def list_profiles(home):
-    """Profile names under <home>/profiles that carry a config.json."""
-    d = os.path.join(home, "profiles")
-    out = []
-    if os.path.isdir(d):
-        try:
-            for name in sorted(os.listdir(d)):
-                if valid_name(name) and os.path.isfile(os.path.join(d, name, "config.json")):
-                    out.append(name)
-        except OSError:
-            pass
-    return out
-
-
-# ---------------- refresh pool ----------------
-
-class Pool:
-    """Background refresh runners for uploaded profiles.
-
-    The DEFAULT profile keeps its own legacy runner inside app.py (byte-similar
-    to 1.0); everything else goes through this pool. At most `max_conc`
-    refreshes run at once so a stranger's upload flood cannot hammer yfinance
-    from this box; each profile is single-flight; last digest is kept for
-    the /api/digest endpoint."""
-
-    def __init__(self, max_conc=2):
-        self._sem = threading.Semaphore(max_conc)
-        self._lock = threading.Lock()
-        self._st = {}
-
-    def status(self, key):
-        with self._lock:
-            s = self._st.get(key)
-            if not s:
-                return {"busy": False, "error": None, "last": None}
-            return {"busy": s.get("busy", False), "error": s.get("error"), "last": s.get("last")}
-
-    def is_busy(self, key):
-        with self._lock:
-            s = self._st.get(key)
-            return bool(s and s.get("busy"))
-
-    def start(self, key, home):
-        """Kick a background refresh; False if one is already running."""
-        with self._lock:
-            s = self._st.get(key)
-            if s and s.get("busy"):
-                return False
-            self._st[key] = {"busy": True, "error": None, "last": None}
-        threading.Thread(target=self._run, args=(key, home), daemon=True).start()
-        return True
-
-    def _run(self, key, home):
-        try:
-            with self._sem:
-                env = dict(os.environ, MARKET_ENGINE_HOME=home)
-                env.pop("PYTHONPATH", None)  # host env must not shadow deps
-                r = subprocess.run(
-                    [sys.executable, os.path.join(HERE, "scripts", "refresh.py"), "--force"],
-                    capture_output=True, text=True, timeout=900, cwd=home, env=env)
-                with self._lock:
-                    if r.returncode != 0:
-                        self._st[key]["error"] = (r.stderr or r.stdout or "")[-400:]
-                    else:
-                        self._st[key]["last"] = _dt.datetime.now().isoformat()
-                        self._st[key]["digest"] = (r.stdout or "").strip()
-        except Exception:
-            with self._lock:
-                self._st[key]["error"] = traceback.format_exc()[-400:]
-        finally:
-            with self._lock:
-                self._st[key]["busy"] = False
-
-    def digest(self, key):
-        with self._lock:
-            s = self._st.get(key) or {}
-        return s.get("digest")
-
-
-POOL = Pool()
-
-
-# ---------------- uploads ----------------
-
-def _default_template():
+def default_template():
     return {
         "_comment": "Generated by market-engine upload. Edit freely; the engine "
                     "re-reads this every refresh. scan_universe is a generic "
@@ -170,6 +79,14 @@ def _default_template():
     }
 
 
+_OVERRIDABLE_KEYS = (
+    "weights", "cash_targets", "benchmarks", "positions", "cost_basis", "cash",
+    "broker_account", "baseline_date", "baseline_value", "etf_tickers",
+    "speculative_tickers", "watchlist", "scan_universe", "manual_overlay",
+    "max_position_weight", "speculative_budget",
+)
+
+
 def _detect_kind(filename, blob):
     low = (filename or "").lower()
     if low.endswith(".json"):
@@ -182,36 +99,37 @@ def _detect_kind(filename, blob):
     return None
 
 
-def import_upload(home, name, *, kind, blob, filename, cash=None, account=None,
-                  confirm=False, equity=None):
-    """Create <home>/profiles/<name>/ from an uploaded config.json / activity
-    CSV / positions CSV. Returns (http_status, payload). Fail-closed: any
-    refusal writes nothing. Success writes config.json then schedules a
-    background refresh (warming) for the new profile."""
-    if not valid_name(name):
-        return 400, {"error": f"invalid portfolio name {name!r} — use lowercase letters, digits, '-' or '_' (max 32)"}
-    if "/" in name or "\\" in name or ".." in name:
-        return 400, {"error": "invalid portfolio name"}
+def setup_book(home, *, kind, blob, filename, cash=None, account=None,
+               confirm=False, replace=False):
+    """Build (or, with replace=1, rebuild) <home>/config.json from an uploaded
+    config.json / Robinhood activity CSV / positions CSV. Returns
+    (http_status, payload); app.py starts the first refresh on success.
+
+    Fail-closed everywhere: anything unrecognized, empty, oversized or
+    implausible is refused and nothing is written. Personal data stays inside
+    the instance dir; a rebuild keeps config.json.bak.
+    """
     if len(blob) > MAX_UPLOAD:
         return 413, {"error": "upload larger than 1 MB"}
 
-    pdir = os.path.realpath(os.path.join(home, "profiles", name))
-    root = os.path.realpath(home)
-    if not pdir.startswith(root + os.sep):
-        return 400, {"error": "invalid portfolio path"}
-    if os.path.exists(pdir):
-        return 409, {"error": f"profile '{name}' already exists — this server creates new profiles only"}
+    cfgpath = os.path.join(home, "config.json")
+    rebuilding = os.path.exists(cfgpath)
+    if rebuilding and not replace:
+        return 409, {"error": "this instance already has a portfolio. If you mean "
+                              "to rebuild it from this upload, tick 'replace' — your "
+                              "current config.json is kept as config.json.bak"}
 
     kind = (kind or "auto").strip().lower()
-    if kind == "auto" or not kind:
+    if kind in ("", "auto"):
         kind = _detect_kind(filename, blob)
     if kind not in ("config", "activity", "positions"):
-        return 422, {"error": "unrecognized file — expected config.json, a Robinhood Account Activity CSV "
-                              "(Instrument/Trans Code/Quantity/Amount columns), or a positions CSV "
+        return 422, {"error": "unrecognized file — expected config.json, a Robinhood "
+                              "Account Activity CSV (Instrument/Trans Code/Quantity/Amount "
+                              "columns), or a positions CSV "
                               "(symbol,quantity[,average_buy_price])"}
 
     notes = []
-    cfg = _default_template()
+    cfg = default_template()
 
     if kind == "config":
         try:
@@ -223,10 +141,7 @@ def import_upload(home, name, *, kind, blob, filename, cash=None, account=None,
         if up.get("cash") is None and cash is None:
             return 422, {"error": "config.json has no 'cash' — provide cash in the config or the form"}
         for k, v in up.items():
-            if k in cfg or k in ("weights", "cash_targets", "positions", "cost_basis", "cash",
-                                 "broker_account", "etf_tickers", "speculative_tickers",
-                                 "watchlist", "scan_universe", "benchmarks", "manual_overlay",
-                                 "max_position_weight", "speculative_budget"):
+            if k in cfg or k in _OVERRIDABLE_KEYS:
                 cfg[k] = v
         if cash is not None:
             cfg["cash"] = cash
@@ -261,8 +176,8 @@ def import_upload(home, name, *, kind, blob, filename, cash=None, account=None,
             if abp > 0:
                 cost_basis[sym] = abp
         if not positions:
-            return 422, {"error": "CSV produced zero open positions — wrong format, the report window "
-                                  "missed your buys, or trades net out"}
+            return 422, {"error": "CSV produced zero open positions — wrong format, the report "
+                                  "window missed your buys, or trades net out"}
         cfg["positions"] = positions
         cfg["cost_basis"] = cost_basis
         cfg["cash"] = round(float(cash), 2)
@@ -273,8 +188,8 @@ def import_upload(home, name, *, kind, blob, filename, cash=None, account=None,
     if account:
         cfg["broker_account"] = str(account)[:64]
 
-    # plausibility (same spirit as broker_merge): a book under $1k after a
-    # *successful parse* is allowed only with explicit confirm.
+    # Plausibility (same spirit as broker_merge): a book under $1k after a
+    # *successful parse* is allowed only with an explicit confirm flag.
     book_est = float(cfg.get("cash") or 0.0) + sum(
         (cfg["positions"].get(t, 0) * p) for t, p in cfg["cost_basis"].items())
     if book_est < 1000 and not confirm:
@@ -285,14 +200,16 @@ def import_upload(home, name, *, kind, blob, filename, cash=None, account=None,
     cfg["baseline_date"] = today
     cfg["baseline_value"] = round(book_est, 2) or None
 
-    os.makedirs(os.path.join(pdir, "data"), exist_ok=True)
-    os.makedirs(os.path.join(pdir, "ledger"), exist_ok=True)
-    with open(os.path.join(pdir, "config.json"), "w") as f:
+    if rebuilding:
+        shutil.copy2(cfgpath, os.path.join(home, "config.json.bak"))
+    os.makedirs(os.path.join(home, "data"), exist_ok=True)
+    os.makedirs(os.path.join(home, "ledger"), exist_ok=True)
+    with open(cfgpath, "w") as f:
         json.dump(cfg, f, indent=2)
 
-    started = POOL.start(name, pdir)
-    return 202, {"ok": True, "profile": name,
+    return 202, {"ok": True,
                  "positions": len(cfg["positions"]),
-                 "warming": bool(started),
+                 "replaced": rebuilding,
                  "notes": notes[:8],
-                 "hint": f"open /?profile={name} — data appears after the first refresh (~2-4 min)"}
+                 "hint": "first analysis started — the dashboard personalizes "
+                         "itself within a few minutes; reload to watch"}
