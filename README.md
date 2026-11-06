@@ -1,15 +1,137 @@
 # market-engine
 
-A rules-based equity decision system: a scoring **engine**, a **dashboard**,
-a **refresh pipeline**, and a deterministic **broker-sync merge**. It scores
-stocks on four pillars, applies hard risk gates, maps scores to concrete
-actions (BUY / ADD / HOLD / TRIM / SELL, or BUY / WATCH / PASS / AVOID for
+A rules-based equity decision system you run on your own machine: a scoring
+**engine**, a **dashboard**, a **refresh pipeline**, and a deterministic
+**broker-sync merge**. It scores stocks on four pillars (quality, growth,
+value, momentum), applies hard risk gates, maps scores to concrete actions
+(BUY / ADD / HOLD / TRIM / SELL, or BUY / WATCH / PASS / AVOID for
 non-holdings), keeps a self-scoring ledger of every call versus SPY, and
 serves it all as a local web dashboard.
 
 Everything is local and portfolio-agnostic: **your portfolio never leaves
-your machine and never enters git.** This repo holds only code; each user's
-book lives in their own *instance directory* that the code reads.
+your machine and never enters git.** This repo holds only code; your book
+lives in a separate *instance directory* that the code reads.
+
+**Not financial advice.** This is decision-support research on delayed public
+data — it does not trade, does not connect to your broker, and nothing here
+is a recommendation for your personal situation.
+
+---
+
+## You need
+
+- **Python 3.9+** (developed and CI-tested on 3.9; 3.10–3.12 fine) — macOS, Linux or Windows.
+- **An internet connection** — the engine pulls prices + fundamentals from Yahoo Finance via `yfinance`. No API keys, no broker credentials, nothing to pay for. Quotes are 15–20 min delayed.
+- ~150 MB for Python dependencies (yfinance brings pandas/numpy).
+
+## Install (once, ~2 minutes)
+
+```bash
+git clone <this repo>
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+.venv/bin/pip install flask yfinance
+```
+
+That's the whole install — the engine needs no build step: `app.py` and the
+scripts put their own folder on `sys.path`, so you run them straight from
+the clone. (Advanced/embedding use only: `pip install -e .` works on pip
+≥21.3; the stock Python 3.9 pip on macOS is older and can't do editable
+installs — use the command above.) Then `pip install pytest` if you want
+to run the test suite.
+
+## First run: give it your portfolio (~5 minutes)
+
+**1 · Pick where your book lives** — any folder; all your data will live
+inside it. Nothing goes into the repo checkout.
+
+```bash
+mkdir ~/my-book
+```
+
+**2 · Start the server pointing at that folder:**
+
+```bash
+cd market-engine
+python app.py --home ~/my-book          # serves http://127.0.0.1:8517
+```
+
+**3 · Open http://127.0.0.1:8517.** With no portfolio yet, the page is an
+upload form instead of a dashboard. Feed it one of:
+
+- **Robinhood export (recommended path).** On the Robinhood website:
+  *Reports → Account activity report* — choose a window reaching back before
+  your oldest still-open buy (default 1-month window is usually too short).
+  Download the CSV. The importer replays buys/sells (incl. fractional),
+  splits and ACAT transfers into current shares + weighted-average cost
+  basis.
+- **Any other broker / hand-typed:** a CSV with
+  `symbol,quantity,average_buy_price` columns (common aliases like
+  `Ticker,Shares,Avg Price` are recognised, `$`/comma/parenthesis formats
+  are handled).
+- **A market-engine `config.json`** (advanced — carries strategy params too;
+  start from `config.example.json` in this repo).
+
+**4 · Also type your current cash balance** — no broker export includes it.
+Copy the figure from your account screen. It matters: the engine's cash
+targets are a core output.
+
+**5 · Press "Build my dashboard."** Nothing uploads anywhere — the file is
+parsed on your own machine into `~/my-book/config.json`, then the first
+analysis runs immediately (~2–4 min to fetch data on first run; the page
+reloads itself when ready). Your holdings, cost-basis P&L, risk flags and
+digest are now personalized to your book; a ledger starts accumulating and
+graduates each call against SPY after 30/60/90 days.
+
+Fail-closed guards: empty/garbage books, oversized files (>1 MB), implausibly
+small books (confirm checkbox overrides) and path tricks are refused without
+writing anything.
+
+## Uploads and the network gate
+
+The upload endpoint is **on while the server is bound to 127.0.0.1** (the
+default) because it writes your portfolio data. Bind `--host 0.0.0.0` to
+serve your LAN and uploads switch **off** automatically — the server has no
+auth. Force either way with `--allow-uploads` / `ME_ALLOW_UPLOADS=1` /
+`ME_ALLOW_UPLOADS=0`. Never expose this server beyond a network you trust.
+
+## Day-2 operations
+
+**You traded? Update the book:**
+- Dashboard → the "rebuild dashboard from a new export" panel at the bottom
+  (upload a fresh activity CSV, tick *replace my book* — old config is kept
+  as `config.json.bak`), or
+- hand-edit `~/my-book/config.json`, or
+- CLI: `import_broker_csv.py` + `broker_merge.py` (see below).
+
+Then press **↻ Refresh data** in the dashboard header (or run
+`refresh.py`). Prices re-fetch, actions re-score.
+
+**Command reference**
+
+| Task | Command (from your instance dir, e.g. `cd ~/my-book`) |
+|---|---|
+| Start dashboard | `python ~/path/to/market-engine/app.py --home ~/my-book` |
+| Manual refresh (prints digest) | `MARKET_ENGINE_HOME=$PWD python …/scripts/refresh.py [--force]` |
+| Import broker CSV | `python …/scripts/import_broker_csv.py ~/Downloads/activity.csv --cash 8213.44` (`--dry-run` to preview, `--format positions` for the generic schema) |
+| Merge into config | `python …/scripts/broker_merge.py` (dry-run) → `… broker_merge.py --apply` |
+| Self-diagnostic | `python …/scripts/check_instance.py` (exit 1 = problems) |
+| Full test suite | `cd market-engine && python -m pytest tests/ -q` — 137 tests, ~8 s, fully offline & synthetic |
+
+Environment knobs: `MARKET_ENGINE_HOME` (instance dir; `--home` sets it),
+`DASHBOARD_HOST` (default `127.0.0.1`; set `0.0.0.0` for LAN — no auth,
+trusted networks only), `DASHBOARD_PORT` (default 8517).
+
+**Scheduling** — `refresh.py` prints a Telegram-ready digest to stdout and
+exits; point any cron at it:
+
+```
+5 8 * * 1-5  cd ~/my-book && MARKET_ENGINE_HOME=$PWD python ~/market-engine/scripts/refresh.py
+```
+
+**Reset / move machines:** your whole state is the instance folder. Copy
+`~/my-book` anywhere and point a fresh clone at it. Delete it for a factory
+reset. The dashboard is a view; the ledger + `config.json` are the substance.
 
 ## Architecture: repo vs instance
 
@@ -17,17 +139,18 @@ book lives in their own *instance directory* that the code reads.
 market-engine/            ← this repo (code only, safe to share/clone)
     engine/                 decision core (read-only at runtime)
     app.py                  Flask server: dashboard + digest + upload endpoints
-    server_core.py          server plumbing: profiles, upload guards, refresh pool
+    server_core.py          upload/setup plumbing (fail-closed guards)
     static/index.html       dashboard UI
     scripts/refresh.py        fetch → score → snapshot → digest pipeline
     scripts/broker_merge.py   broker book → config.json merge (deterministic)
     scripts/import_broker_csv.py  Robinhood (or any) CSV export → broker book
     scripts/check_instance.py self-diagnostic: does your instance add up?
-    tests/                    144 pytest tests, all synthetic fixtures
+    tests/                    137 pytest tests, all synthetic fixtures
     config.example.json       template for your instance config
 
 ~/my-book/                ← your instance (MARKET_ENGINE_HOME — your data)
     config.json             positions, cost basis, cash, watchlist, params
+    config.json.bak         kept automatically when a rebuild replaces it
     data/cache/             yfinance cache (6h TTL)
     data/state.json         dashboard snapshot (written by refresh)
     data/broker_raw.json    optional raw broker book (see Broker sync)
@@ -35,94 +158,31 @@ market-engine/            ← this repo (code only, safe to share/clone)
 ```
 
 The instance home is `$MARKET_ENGINE_HOME`, else the current directory. Run
-the tools **from your instance directory** (or export the env var) and the
-repo never accumulates anyone's data. `engine/paths.py` is the single
-definition of this layout.
+the tools **from your instance directory** (or pass `--home` / export the env
+var) and the repo never accumulates anyone's data. `engine/paths.py` is the
+single definition of this layout. The server is single-tenant by design:
+one process = one machine = one book — no multi-user mode, by choice (a
+correct shared server needs auth, quotas and per-tenant sandboxing; wrong
+tool for a personal research box).
 
-## Quickstart
-
-```bash
-git clone <this repo> && cd market-engine
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e .
-
-mkdir ~/my-book && cd ~/my-book
-cp /path/to/market-engine/config.example.json config.json
-$EDITOR config.json          # broker_account, cash strategy, scan universe
-
-# Get your book in — pick ONE:
-#  (a) start the server below and upload your CSV on the first-run page
-#      (no API, no credentials — this is the intended path), or
-#  (b) type positions/cash into config.json by hand, or
-#  (c) the same CSV path from the CLI (see Broker sync):
-python /path/to/market-engine/scripts/import_broker_csv.py ~/Downloads/activity.csv --cash 8213.44
-python /path/to/market-engine/scripts/broker_merge.py --apply   # CSV → config.json
-
-python /path/to/market-engine/scripts/check_instance.py  # self-diagnostic
-python /path/to/market-engine/scripts/refresh.py    # first run fetches ~all tickers, prints a digest
-python /path/to/market-engine/app.py                # → http://127.0.0.1:8517
-```
-
-`refresh.py` writes `data/state.json` + a ledger snapshot; `app.py` serves
-that snapshot and the UI, and its **Refresh** button re-runs the pipeline as
-a subprocess (the server never imports engine modules — long-lived servers
-caching stale decision code is a real bug this project has bled over).
-
-Environment knobs: `MARKET_ENGINE_HOME` (instance dir), `DASHBOARD_HOST`
-(default `127.0.0.1`; set `0.0.0.0` to serve your LAN — no auth, trusted
-networks only), `DASHBOARD_PORT` (default 8517). See Run-it-locally below for
-the upload endpoint and its network gate.
-
-## Run it on your own machine (single-tenant)
-
-One clone, one machine, one portfolio — the server is deliberately not a
-multi-tenant host. Point it at any instance dir, open it in a browser:
-
-```bash
-python app.py --home ~/my-book          # default 127.0.0.1:8517
-```
-
-With no book yet, the dashboard opens as an **upload page**: drop in a
-`config.json`, a Robinhood *Account activity* CSV, or a
-`symbol,quantity,average_buy_price` positions CSV (plus your `cash` figure,
-which no export carries). The server parses it into your `config.json` and
-runs the first analysis immediately — the dashboard personalizes itself to
-your holdings, cost basis and cash within a few minutes. Fail-closed: empty
-or unrecognized books, oversized files and path tricks are refused without
-writing anything; a rebuild keeps `config.json.bak`.
-
-Uploads are enabled while the server is bound to loopback (the default).
-Bind `--host 0.0.0.0` and they switch **off** automatically — this server has
-no auth. Re-enable deliberately with `--allow-uploads` or `ME_ALLOW_UPLOADS=1`
-only on a network you trust; `ME_ALLOW_UPLOADS=0` always disables.
-
-## Getting your book in (CSV — no API, no MCP, no credentials)
+## Getting your book in via CLI (no browser)
 
 `scripts/import_broker_csv.py` turns a broker CSV export into the broker
 book `broker_merge.py` consumes. Nothing leaves your machine; the script
 never talks to any API.
 
-**Robinhood — Account activity report** (web: *Reports → Account activity
-report*, pick a window covering your oldest open buy):
-
 ```bash
 cd ~/my-book
-python .../scripts/import_broker_csv.py ~/Downloads/activity_report.csv --cash 8213.44
-python .../scripts/broker_merge.py           # review the drift it found
-python .../scripts/broker_merge.py --apply   # writes config.json (+ .bak)
+python …/scripts/import_broker_csv.py ~/Downloads/activity_report.csv --cash 8213.44
+python …/scripts/broker_merge.py           # review the drift it found
+python …/scripts/broker_merge.py --apply   # writes config.json (+ .bak)
 ```
 
-It replays position events (Buy/Sell incl. fractional, splits, ACAT
-transfers) into current shares and weighted-average cost basis, counts cash
-events (dividends, transfers, fees) and skips them. The activity CSV carries
-no beginning cash balance, hence `--cash` from your account screen. ACAT
-transfers arrive without cost basis — the script warns; fix `cost_basis` in
-config.json if you care about P&L accuracy. `--dry-run` previews.
-
-**Any other broker (or hand-typed):** `--format positions` with
-`symbol,quantity,average_buy_price`. Header names are matched
-case-insensitively with common aliases; dollar formatting (`$`, commas,
-parenthesised negatives) is handled.
+Cash events in the activity CSV (dividends, transfers, fees) are counted
+into the drift report but skipped for positions; the CSV carries no
+beginning cash balance, hence `--cash` from your account screen. ACAT
+transfers arrive without cost basis — the importer warns; fix `cost_basis`
+in config.json if you care about P&L accuracy.
 
 ## Broker sync (automated, e.g. Robinhood Trading MCP)
 
@@ -137,7 +197,7 @@ changes, and an LLM never hand-edits money data:
     "positions": [{"symbol": "XYZ", "quantity": 10, "average_buy_price": 45.0}]}
    ```
    (The CSV importer just writes this file — the two paths converge.)
-2. `python .../scripts/broker_merge.py` — dry-run listing drift (cash,
+2. `python …/scripts/broker_merge.py` — dry-run listing drift (cash,
    share count, cost-basis, NEW/CLOSED positions); `--apply` writes
    `config.json` (with `.bak`), prunes stale tickers from the ETF/spec lists
    and re-runs the refresh. `NOCHANGE` = already in sync.
@@ -151,15 +211,6 @@ Trading MCP (read-only `get_accounts` / `get_portfolio` /
 pipe results through the merge. `config.json` then stays a live mirror of
 the broker. If you'd rather not connect anything, a weekly CSV re-import
 through the same merge works just as well.
-
-## Scheduling
-
-`refresh.py` prints a Telegram-ready digest to stdout (empty book drift =
-still prints) — point any cron at it:
-
-```
-5 8 * * 1-5  cd ~/my-book && MARKET_ENGINE_HOME=$HOME/my-book ~/.venvs/market-engine/bin/python ~/Repo/market-engine/scripts/refresh.py
-```
 
 ## Engine modules
 
@@ -208,7 +259,7 @@ a plain function of `(records, config, cash)`.
 
 ```bash
 pip install pytest
-python -m pytest tests/ -q        # 117 tests, ~10s, fully offline & synthetic
+python -m pytest tests/ -q        # 137 tests, ~8s, fully offline & synthetic
 ```
 
 Beyond unit coverage of factor math, bands/gates, ledger scoring, the merge
@@ -221,9 +272,10 @@ semantic invariants (gates only downgrade, bear pauses buys, ETFs never
 scored, over-cap ⇒ TRIM). Goldens change only when rules deliberately
 change — the git diff of a regenerated golden **is** the rules changelog.
 The CSV importer is tested end-to-end (activity replay → broker book →
-merge → config) against a synthetic Robinhood-style CSV. One test validates
-the production `state.json` when an instance home exists and skips
-otherwise — a bare clone never touches a real book.
+merge → config) against a synthetic Robinhood-style CSV, and
+`tests/test_server_setup.py` covers the upload/onboarding flow and its
+network gate. One test validates a production `state.json` when an instance
+home exists and skips otherwise — a bare clone never touches a real book.
 
 Regenerate goldens after an intentional rules change:
 
@@ -238,7 +290,9 @@ python tests/fixtures/_build.py   # rewrite fixture books + goldens
 - Universe-relative ranks (RS percentile) depend on what else you feed it — keep the scan universe stable if you rely on ranks.
 - Nothing here is financial advice. The ledger exists so you only trust the engine as far as its evidence supports.
 
-## Security
+## Security & privacy stance
 
 - `config.json`, `data/`, `ledger/` are gitignored on purpose: they hold positions, cost basis, cash and decision history — keep them that way.
 - No credentials, brokerage APIs or personal data anywhere in this repo.
+- Server binds `127.0.0.1` unless told otherwise; no auth exists. Uploads (which write your config) auto-disable on any network bind. Do not expose beyond a trusted network.
+- Refresh always runs as a subprocess, never in-process — a long-lived server caching stale decision code is a real bug this project has bled over.
