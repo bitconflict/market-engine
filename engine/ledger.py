@@ -14,12 +14,23 @@ def today():
 
 
 def snapshot(state):
-    """Append today's decisions + NAV. One entry per calendar day (overwrites same-day)."""
+    """Append today's decisions + NAV. One entry per calendar day (overwrites same-day).
+
+    Scope: holdings + watchlist + screener candidates — every actionable call the
+    engine takes must reach track_record(), including non-holdings. Tickers listed
+    twice (watchlist ∩ scan universe) are recorded once; first listing wins.
+    """
     d = today()
+    recs, seen = [], set()
+    for h in state["holdings"] + state["watchlist"] + state.get("candidates", []):
+        tk = h.get("ticker")
+        if not tk or not h.get("action") or tk in seen:
+            continue
+        seen.add(tk)
+        recs.append({"ticker": tk, "action": h["action"], "composite": h.get("composite"),
+                     "px": h.get("px") or (h.get("value") / h["shares"] if h.get("shares") else None)})
     entry = {"date": d, "regime": state["regime"]["label"],
-             "decisions": {h["ticker"]: {"action": h["action"], "composite": h.get("composite"),
-                                         "px": h.get("px") or (h.get("value") / h["shares"] if h.get("shares") else None)}
-                           for h in state["holdings"] + state["watchlist"] if h.get("action")}}
+             "decisions": {r.pop("ticker"): r for r in recs}}
     rows = [json.loads(l) for l in open(DEC)] if os.path.exists(DEC) else []
     rows = [r for r in rows if r["date"] != d]
     rows.append(entry)

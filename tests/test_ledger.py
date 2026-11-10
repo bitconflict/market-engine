@@ -31,6 +31,20 @@ def test_snapshot_writes_and_dedupes_same_day(tmp_engine):
     assert len(nav) == 1 and nav[0]["total"] == 100.0
 
 
+def test_snapshot_includes_screener_candidates(tmp_engine):
+    """The 2026-11-09 bug class: screener calls existed in state but never
+    reached the ledger, so track_record() could never score them."""
+    st = _state()
+    st["candidates"] = [{"ticker": "EEE", "action": "BUY", "composite": 71, "px": 100.0},
+                        {"ticker": "FFF", "action": "AVOID", "composite": 20, "px": 10.0},
+                        {"ticker": "BBB", "action": "WATCH", "composite": 50, "px": 20.0}]
+    ledger.snapshot(st)
+    decs = [json.loads(l) for l in open(tmp_engine["DEC"])][-1]["decisions"]
+    assert decs["EEE"]["action"] == "BUY" and decs["FFF"]["action"] == "AVOID"
+    assert decs["BBB"]["action"] == "BUY"       # listed twice -> first (watchlist) wins,
+    assert len([k for k in decs if decs[k]["action"]]) == 5   # never overwritten
+
+
 def test_track_record_scores_vs_spy(tmp_engine):
     dts = dates(400)
     d0 = dts[10]
