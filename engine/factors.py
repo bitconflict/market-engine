@@ -61,7 +61,7 @@ def metrics(rec, bench_m121=None):
                  m121=m121, m3=_ret(closes, 63), m6=_ret(closes, 126),
                  off_hi=(px / hi52 - 1.0) if hi52 else None,
                  above_lo=(px / lo52 - 1.0) if lo52 else None,
-                 vs200=(px / s200 - 1.0) if s50 else None)
+                 vs200=(px / s200 - 1.0) if s200 else None)
         tt = [
             bool(_valid(s150) and _valid(s200) and px > s150 and px > s200),
             bool(_valid(s150) and _valid(s200) and s150 > s200),

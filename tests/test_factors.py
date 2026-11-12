@@ -97,3 +97,15 @@ def test_pillar_scores_defaults_on_empty_metrics():
     sc = pillar_scores({})
     assert sc["quality"] == 52.0                # all-neutral fallbacks
     assert sc["growth"] == 50.0 and sc["value"] == 50.0 and sc["momentum"] == 45.0
+
+
+def test_metrics_short_history_no_200d_average():
+    # 50..199 valid closes: sma50 exists but sma200 is None. The vs200 line
+    # guarded on s50 while dividing by s200, so ANY short-history name raised
+    # TypeError and killed the whole refresh (fresh-instance 503, Nov 2026).
+    for n in (60, 120):
+        m = metrics(make_rec(n=n))
+        assert m["sma50"] is not None and m["sma200"] is None
+        assert m["vs200"] is None               # missing trend -> None, never guessed
+        sc = pillar_scores(m)
+        assert 0 <= sc["momentum"] <= 100       # neutral fallback path, no crash

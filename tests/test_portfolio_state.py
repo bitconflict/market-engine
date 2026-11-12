@@ -132,3 +132,28 @@ def test_empty_book_is_safe():
     st = portfolio_state(bench_recs(bull=False), make_cfg(), cash=0.0)
     assert st["holdings"] == [] and st["actions"] == []
     assert st["portfolio"]["total"] == 0.0
+
+
+def test_short_and_missing_history_do_not_crash_book():
+    # Regression (Nov 2026, fresh-instance incident): a flaky Yahoo feed made
+    # some fetches return <200 daily bars, metrics() divided by the None
+    # 200-day average, and the TypeError killed the whole refresh -> no
+    # state.json -> /api/state + /api/digest served 503 forever. Short or
+    # absent history must degrade to neutral scoring, never crash the book.
+    recs = bench_recs(bull=True, vix=18)
+    recs.update({
+        "SHORT": make_rec("SHORT", n=120),               # sma50 yes, sma200 None
+        "TINY": make_rec("TINY", n=30),                  # too short for any average
+        "BLANK": {"ticker": "BLANK", "ok": False, "err": "yfinance failed"},
+        "WATCH30": make_rec("WATCH30", n=90, drift=-0.002),
+    })
+    cfg = make_cfg(positions={"SHORT": 100, "TINY": 100, "BLANK": 100},
+                   watchlist=["WATCH30"], cash=5000.0)
+    st = portfolio_state(recs, cfg, cash=5000.0)
+    hs = {h["ticker"]: h for h in st["holdings"]}
+    assert set(hs) == {"SHORT", "TINY", "BLANK"}
+    for h in st["holdings"] + st["watchlist"]:
+        assert h.get("action") is not None
+    for h in st["holdings"] + st["watchlist"]:
+        for v in (h.get("pillars") or {}).values():
+            assert 0 <= v <= 100
